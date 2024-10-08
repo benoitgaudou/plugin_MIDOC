@@ -54,5 +54,10 @@ import static gama.core.common.interfaces.IKeyword.*;
 
 public class GamlAdditions extends gama.gaml.compilation.AbstractGamlAdditions {
 	public void initialize() throws SecurityException, NoSuchMethodException {
+	initializeFile();
+}public void initializeFile() throws SecurityException, NoSuchMethodException {
+_file("gtfs",gama.extensions.multimodal.TraitementGTFS.class,(s,o)-> {return new gama.extensions.multimodal.TraitementGTFS(s,((String)o[0]));},5,1,4,S("txt"));
+_operator(S("is_gtfs"),null,"Returns true if the parameter is a gtfs file",I(0),B,true,3,0,0,0,(s,o)-> { return GamaFileType.verifyExtension("gtfs",Cast.asString(s, o[0]));}, false);
+_operator(S("gtfs_file"),gama.extensions.multimodal.TraitementGTFS.class.getConstructor(SC,S),4,I(0),GF,false,"gtfs",(s,o)-> {return new gama.extensions.multimodal.TraitementGTFS(s,((String)o[0]));});
 }
 }
