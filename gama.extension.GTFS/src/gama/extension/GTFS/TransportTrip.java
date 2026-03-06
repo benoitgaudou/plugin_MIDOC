@@ -1,103 +1,128 @@
 package gama.extension.GTFS;
 
-import java.util.List;
+import java.util.Map;
+
+import gama.core.util.GamaListFactory;
+import gama.core.util.GamaMapFactory;
+import gama.core.util.IList;
+import gama.core.util.IMap;
 
 public class TransportTrip {
-	
-	 private String routeId; // Identifiant de la route
-	    private String serviceId; // Identifiant du service
-	    private int tripId; // Identifiant du trajet
-	    private int directionId; // Direction du trajet
-	    private int shapeId; // Identifiant de la forme (shape)
-	    private TransportRoute transportRoute; // La route associée à ce trajet
-	    private List<TransportStop> stops; // Liste des arrêts associés à ce trajet
-	    private List<String> departureTimes; // Liste des heures de départ à chaque arrêt
 
-	    // Constructeur
-	    public TransportTrip(String routeId, String serviceId, int tripId, int directionId, int shapeId, TransportRoute transportRoute) {
-	        this.routeId = routeId;
-	        this.serviceId = serviceId;
-	        this.tripId = tripId;
-	        this.directionId = directionId;
-	        this.shapeId = shapeId;
-	        this.transportRoute = transportRoute;
-	    }
+    private String routeId; 
+    private String serviceId; 
+    private String tripId;
+    private String shapeId;
+    private int routeType = -1;
+    private IList<String> stopIdsInOrder; 
+    private IList<IMap<String, Object>> stopDetails; 
 
-	    // Getters et Setters
-	    public String getRouteId() {
-	        return routeId;
-	    }
+    // Constructor
+    public TransportTrip(String routeId, String serviceId, String tripId, int directionId, String shapeId) {
+        this.routeId = routeId;
+        this.serviceId = serviceId;
+        this.tripId = tripId;
+        this.shapeId = shapeId;
+        this.stopIdsInOrder = GamaListFactory.create();
+        this.stopDetails = GamaListFactory.create();
+    }
+    
+    public int getRouteType() {  
+        return routeType;
+    }
 
-	    public void setRouteId(String routeId) {
-	        this.routeId = routeId;
-	    }
+    public void setRouteType(int routeType) {
+        this.routeType = routeType;
+    }
 
-	    public String getServiceId() {
-	        return serviceId;
-	    }
+    // Add a stop_id in sequence order
+    public void addStop(String stopId) {
+        stopIdsInOrder.add(stopId);
+    }
 
-	    public void setServiceId(String serviceId) {
-	        this.serviceId = serviceId;
-	    }
+    // Add stop details (stopId and departureTime)
+    public void addStopDetail(String stopId, String departureTime, double shapeDistTraveled) {
+        @SuppressWarnings("unchecked")
+		IMap<String, Object> stopDetail = GamaMapFactory.create();
+        stopDetail.put("stopId", stopId);
+        stopDetail.put("departureTime", departureTime);
+        stopDetail.put("shapeDistTraveled", shapeDistTraveled); // 🔥 ajoute la distance
+        stopDetails.add(stopDetail);
+    }
 
-	    public int getTripId() {
-	        return tripId;
-	    }
 
-	    public void setTripId(int tripId) {
-	        this.tripId = tripId;
-	    }
+    // Set stop details
+    public void setStopDetails(IList<IMap<String, Object>> stopDetails) {
+        this.stopDetails = stopDetails;
+    }
 
-	    public int getDirectionId() {
-	        return directionId;
-	    }
+    // Get stop details
+    public IList<IMap<String, Object>> getStopDetails() {
+        return stopDetails;
+    }
 
-	    public void setDirectionId(int directionId) {
-	        this.directionId = directionId;
-	    }
+    // Get stops in order
+    public IList<String> getStopsInOrder() {
+        return stopIdsInOrder;
+    }
 
-	    public int getShapeId() {
-	        return shapeId;
-	    }
+    // Set the entire list of stop_ids
+    public void setStopIdsInOrder(IList<String> stopIdsInOrder) {
+        this.stopIdsInOrder = stopIdsInOrder;
+    }
 
-	    public void setShapeId(int shapeId) {
-	        this.shapeId = shapeId;
-	    }
+    // Getters and Setters for trip attributes
+    public String getRouteId() {
+        return routeId;
+    }
 
-	    public TransportRoute getTransportRoute() {
-	        return transportRoute;
-	    }
+    public void setRouteId(String routeId) {
+        this.routeId = routeId;
+    }
 
-	    public void setTransportRoute(TransportRoute transportRoute) {
-	        this.transportRoute = transportRoute;
-	    }
+    public String getServiceId() {
+        return serviceId;
+    }
 
-	    public List<TransportStop> getStops() {
-	        return stops;
-	    }
+    public void setServiceId(String serviceId) {
+        this.serviceId = serviceId;
+    }
 
-	    public void setStops(List<TransportStop> stops) {
-	        this.stops = stops;
-	    }
+	public String getTripId() {
+		return tripId;
+	}
 
-	    public List<String> getDepartureTimes() {
-	        return departureTimes;
-	    }
+    public void setTripId(String tripId) {
+        this.tripId = tripId;
+    }
 
-	    public void setDepartureTimes(List<String> departureTimes) {
-	        this.departureTimes = departureTimes;
-	    }
 
-	    // Méthode pour ajouter un arrêt et son heure de départ
-	    public void addStop(String departureTime, TransportStop stop) {
-	        this.departureTimes.add(departureTime);
-	        this.stops.add(stop);
-	    }
+    public String getShapeId() { return shapeId; }
 
-	    // Méthode pour afficher les informations du trajet
-	    @Override
-	    public String toString() {
-	        return "Trip ID: " + tripId + ", Route ID: " + routeId + ", Stops: " + stops.size() + " stops.";
-	    }
+    public void setShapeId(String shapeId) { this.shapeId = shapeId; }
+    
+    /**
+     * Returns a list of TransportStop objects corresponding to the stop IDs in this trip.
+     * 
+     * @param stopsMap A map containing stop IDs and their corresponding TransportStop objects.
+     * @return A list of TransportStop objects.
+     */
+    public IList<TransportStop> getStops(Map<String, TransportStop> stopsMap) {
+        IList<TransportStop> stops = GamaListFactory.create();
+        for (String stopId : stopIdsInOrder) {
+            TransportStop stop = stopsMap.get(stopId);
+            if (stop != null) {
+                stops.add(stop);
+            } else {
+                System.err.println("[Warning] Stop ID not found in stopsMap: " + stopId);
+            }
+        }
+        return stops;
+    }
 
+    // Display trip information
+    @Override
+    public String toString() {
+        return "Trip ID: " + tripId + ", Route ID: " + routeId + ", Stops: " + stopIdsInOrder.size() + " stops.";
+    }
 }

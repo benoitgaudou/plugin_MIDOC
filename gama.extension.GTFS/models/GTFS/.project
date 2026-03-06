@@ -16,4 +16,11 @@
 		<nature>gama.ui.application.gamaNature</nature>
 		<nature>gama.ui.application.pluginNature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>external/xapi_meta3208957502689865698</name>
+			<type>1</type>
+			<locationURI>CACHE_LOC/overpass-api.de+_++_+api+_+xapi_meta3208957502689865698</locationURI>
+		</link>
+	</linkedResources>
 </projectDescription>
