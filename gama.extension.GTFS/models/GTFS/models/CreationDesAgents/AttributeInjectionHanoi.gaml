@@ -14,19 +14,19 @@ global {
     
     // --- INITIALISATION ---
     init {
-        write "🚀 Début du test 1 - Injection et typage des attributs ";
-        write "📂 Chargement du GTFS depuis : " + gtfs_dir;
+        write "Début du test 1 - Injection et typage des attributs ";
+        write "Chargement du GTFS depuis : " + gtfs_dir;
         
         // Chargement du fichier GTFS
         gtfs_f <- gtfs_file(gtfs_dir);
         
         if gtfs_f = nil {
-            write "❌ ERREUR CRITIQUE : Impossible de charger le fichier GTFS !";
-            do die;
+            write "ERREUR CRITIQUE : Impossible de charger le fichier GTFS !";
+            do die();
         }
         
         // Création des agents bus_stop
-        write "🚏 Création des arrêts de bus...";
+        write "Création des arrêts de bus...";
         create bus_stop from: gtfs_f;
         total_bus_stops <- length(bus_stop);
         write "✅ " + string(total_bus_stops) + " arrêts créés";

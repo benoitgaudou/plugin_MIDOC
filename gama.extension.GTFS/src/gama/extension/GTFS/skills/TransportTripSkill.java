@@ -1,14 +1,15 @@
 package gama.extension.GTFS.skills;
 
-import gama.annotations.precompiler.GamlAnnotations.skill;
-import gama.annotations.precompiler.GamlAnnotations.vars;
-import gama.annotations.precompiler.GamlAnnotations.variable;
-import gama.annotations.precompiler.GamlAnnotations.getter;
-import gama.annotations.precompiler.GamlAnnotations.setter;
-import gama.annotations.precompiler.GamlAnnotations.doc;
-import gama.gaml.skills.Skill;
-import gama.core.metamodel.agent.IAgent;
-import gama.gaml.types.IType;
+import gama.annotations.skill;
+import gama.annotations.doc;
+import gama.annotations.getter;
+import gama.annotations.setter;
+import gama.annotations.variable;
+import gama.annotations.vars;
+
+import gama.api.gaml.types.IType;
+import gama.api.kernel.agent.IAgent;
+import gama.api.kernel.skill.Skill;
 
 /**
  * The skill TransportTripSkill for managing individual transport trips in GAMA.

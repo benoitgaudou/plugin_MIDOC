@@ -13,6 +13,13 @@ global {
     init {   
         // Create bus_stop agents from the GTFS data
        create bus_stop from: gtfs_f ;  
+       create transport_shape from: gtfs_f ;  
+       
+       // 
+       write ""+length(bus_stop)+" bus stops have been created";
+       write ""+length(transport_shape)+" transport shape have been created";
+       
+       
     }
 }
 
@@ -24,6 +31,13 @@ species bus_stop skills: [TransportStopSkill] {
      }
 }
 
+species transport_shape skills: [TransportShapeSkill] {
+     aspect base { 	
+		draw shape color:#darkgrey;	
+     }
+
+
+}
 
 experiment GTFSExperiment type: gui virtual: true {
     
@@ -32,6 +46,7 @@ experiment GTFSExperiment type: gui virtual: true {
         display "Bus Stops And Envelope" {  
             // Display the bus_stop agents on the map
             species bus_stop aspect: base;
+            species transport_shape aspect: base; 
         }
     }
 }

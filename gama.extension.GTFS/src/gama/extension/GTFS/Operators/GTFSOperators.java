@@ -12,27 +12,24 @@ import gama.extension.GTFS.GamaGTFSFile;
 public class GTFSOperators {
 
 	@operator(
-		    value = "starting_date_gtfs",
-		    type = IType.DATE,
-		    category = { IOperatorCategory.DATE }
-		)
-		public static IDate starting_date_gtfs(final IScope scope, final GamaGTFSFile gtfs) {
-		    java.time.LocalDate localDate = gtfs.getStartingDate();
-		    if (localDate == null) return null;
-		    return GamaDateFactory.create(scope, localDate);
-		}
+	    value = "starting_date_gtfs",
+	    type = IType.DATE,
+	    category = { IOperatorCategory.DATE }
+	)
+	public static IDate starting_date_gtfs(final IScope scope, final GamaGTFSFile gtfs) {
+	    java.time.LocalDate localDate = gtfs.getStartingDate();
+	    if (localDate == null) return null;
+	    return GamaDateFactory.createFromTemporal(scope, localDate);
+	}
 
-		@operator(
-		    value = "ending_date_gtfs",
-		    type = IType.DATE,
-		    category = { IOperatorCategory.DATE }
-		)
-		public static IDate ending_date_gtfs(final IScope scope, final GamaGTFSFile gtfs) {
-		    java.time.LocalDate localDate = gtfs.getEndingDate();
-		    if (localDate == null) return null;
-		    return GamaDateFactory.create(scope, localDate);
-		}
-		
-
-
+	@operator(
+	    value = "ending_date_gtfs",
+	    type = IType.DATE,
+	    category = { IOperatorCategory.DATE }
+	)
+	public static IDate ending_date_gtfs(final IScope scope, final GamaGTFSFile gtfs) {
+	    java.time.LocalDate localDate = gtfs.getEndingDate();
+	    if (localDate == null) return null;
+	    return GamaDateFactory.createFromTemporal(scope, localDate);
+	}
 }

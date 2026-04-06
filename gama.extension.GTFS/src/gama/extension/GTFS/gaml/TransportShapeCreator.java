@@ -1,15 +1,14 @@
 package gama.extension.GTFS.gaml;
 
-import gama.core.metamodel.agent.IAgent;
-import gama.core.metamodel.population.IPopulation;
-import gama.core.metamodel.shape.IShape;
-import gama.core.runtime.IScope;
-import gama.core.util.IList;
+import gama.annotations.constants.IKeyword;
+import gama.api.gaml.statements.IStatement;
+import gama.api.gaml.statements.IStatement.Create;
+import gama.api.kernel.agent.IAgent;
+import gama.api.kernel.agent.IPopulation;
+import gama.api.runtime.scope.IScope;
+import gama.api.types.geometry.IShape;
+import gama.api.types.list.IList;
 import gama.extension.GTFS.TransportShape;
-import gama.gaml.statements.CreateStatement;
-import gama.gaml.statements.RemoteSequence;
-import gama.core.common.interfaces.IKeyword;
-
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,8 +51,8 @@ public class TransportShapeCreator implements GTFSAgentCreator {
 	}
 
 	@Override
-	public IList<? extends IAgent> createAgents(IScope scope, IPopulation<? extends IAgent> population, List<Map<String, Object>> inits, CreateStatement statement, RemoteSequence sequence) {
-	    throw new UnsupportedOperationException("createAgents() should not be called on TransportShapeCreator.");
+	public IList<? extends IAgent> createAgents(IScope scope, IPopulation<? extends IAgent> population, List<Map<String, Object>> inits, Create statement, IStatement sequence) {
+		throw new UnsupportedOperationException("createAgents() should not be called on TransportShapeCreator.");
 	}
 	
 	@Override

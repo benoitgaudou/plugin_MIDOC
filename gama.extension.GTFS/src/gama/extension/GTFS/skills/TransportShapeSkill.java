@@ -1,19 +1,14 @@
 package gama.extension.GTFS.skills;
 
-import gama.annotations.precompiler.GamlAnnotations.skill;
-import gama.annotations.precompiler.GamlAnnotations.vars;
-import gama.annotations.precompiler.GamlAnnotations.variable;
-import gama.annotations.precompiler.GamlAnnotations.getter;
-import gama.annotations.precompiler.GamlAnnotations.setter;
-import gama.annotations.precompiler.GamlAnnotations.doc;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.LineString;
-import org.locationtech.jts.linearref.LengthIndexedLine;
-import gama.core.metamodel.agent.IAgent;
-import gama.gaml.skills.Skill;
-import gama.gaml.types.IType;
+import gama.annotations.getter;
+import gama.annotations.setter;
+import gama.annotations.doc;
+import gama.annotations.vars;
+import gama.annotations.skill;
+import gama.annotations.variable;
+import gama.api.gaml.types.IType;
+import gama.api.kernel.agent.IAgent;
+import gama.api.kernel.skill.Skill;
 
 /**
  * Skill for transport shape agents.

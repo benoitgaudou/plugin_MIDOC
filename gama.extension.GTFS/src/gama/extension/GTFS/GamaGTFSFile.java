@@ -825,7 +825,8 @@ public class GamaGTFSFile extends GamaFile<IList<String>, String> {
     
 
 
-    public void computeDepartureInfo(IScope scope) {
+    @SuppressWarnings("unchecked")
+	public void computeDepartureInfo(IScope scope) {
         System.out.println("Starting computeDepartureInfo...");
 
         // 1. Détermination de la stratégie de filtrage

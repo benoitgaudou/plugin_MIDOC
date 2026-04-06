@@ -19,6 +19,7 @@ global {
     init {
         // Create bus_stop agents from the GTFS data
         create bus_stop from: gtfs_f;
+        create 
         
         write string(length(bus_stop)) + " bus stops créés depuis " + gtfs_f_path;
     }

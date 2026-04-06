@@ -1,17 +1,18 @@
 package gama.extension.GTFS.export;
 
-import gama.core.runtime.IScope;
+import gama.api.runtime.scope.IScope;
 import gama.extension.GTFS.GamaGTFSFile;
 import gama.extension.GTFS.TransportStop;
+
+import org.geotools.api.data.SimpleFeatureStore;
+import org.geotools.api.feature.simple.SimpleFeatureType;
+import org.geotools.api.referencing.crs.CoordinateReferenceSystem;
 import org.geotools.data.*;
-import org.geotools.data.simple.SimpleFeatureStore;
 import org.geotools.data.shapefile.ShapefileDataStore;
 import org.geotools.data.shapefile.ShapefileDataStoreFactory;
 import org.geotools.feature.DefaultFeatureCollection;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
-import org.opengis.feature.simple.SimpleFeatureType;
-import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.geotools.referencing.CRS;
 import org.locationtech.jts.geom.*;
 
@@ -243,7 +244,7 @@ public class GTFSShapeExporter {
             collection.add(featureBuilder.buildFeature(null));
         }
 
-        Transaction transaction = new DefaultTransaction("create");
+        DefaultTransaction transaction = new DefaultTransaction("create");
         SimpleFeatureStore featureStore = (SimpleFeatureStore) newDataStore.getFeatureSource(newDataStore.getTypeNames()[0]);
         try {
             featureStore.setTransaction(transaction);
@@ -294,7 +295,7 @@ public class GTFSShapeExporter {
             collection.add(featureBuilder.buildFeature(null));
         }
 
-        Transaction transaction = new DefaultTransaction("create");
+        DefaultTransaction transaction = new DefaultTransaction("create");
         SimpleFeatureStore featureStore = (SimpleFeatureStore) newDataStore.getFeatureSource(newDataStore.getTypeNames()[0]);
         try {
             featureStore.setTransaction(transaction);

@@ -1,11 +1,11 @@
 
 package gama.extension.GTFS.skills;
 
-import gama.annotations.precompiler.GamlAnnotations.action;
-import gama.annotations.precompiler.GamlAnnotations.doc;
-import gama.annotations.precompiler.GamlAnnotations.skill;
-import gama.core.runtime.IScope;
-import gama.gaml.skills.Skill;
+import gama.annotations.action;
+import gama.annotations.skill;
+import gama.annotations.doc;
+import gama.api.kernel.skill.Skill;
+import gama.api.runtime.scope.IScope;
 import gama.extension.GTFSfilter.GTFSFilter;
 import java.io.File;
 

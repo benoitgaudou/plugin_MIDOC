@@ -5,13 +5,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import gama.core.metamodel.agent.IAgent;
-import gama.core.metamodel.population.IPopulation;
-import gama.core.runtime.IScope;
-import gama.core.util.IList;
+import gama.api.gaml.statements.IStatement;
+import gama.api.gaml.statements.IStatement.Create;
+import gama.api.kernel.agent.IAgent;
+import gama.api.kernel.agent.IPopulation;
+import gama.api.runtime.scope.IScope;
+import gama.api.types.list.IList;
 import gama.extension.GTFS.TransportTrip;
-import gama.gaml.statements.CreateStatement;
-import gama.gaml.statements.RemoteSequence;
 
 public class TransportTripCreator implements GTFSAgentCreator {
 	
@@ -47,7 +47,7 @@ public class TransportTripCreator implements GTFSAgentCreator {
 
 	@Override
 	public IList<? extends IAgent> createAgents(IScope scope, IPopulation<? extends IAgent> population,
-			List<Map<String, Object>> inits, CreateStatement statement, RemoteSequence sequence) {
+			List<Map<String, Object>> inits, Create statement, IStatement sequence) {
 		
 		return population.createAgents(scope, inits.size(), inits, false, true);
 	}

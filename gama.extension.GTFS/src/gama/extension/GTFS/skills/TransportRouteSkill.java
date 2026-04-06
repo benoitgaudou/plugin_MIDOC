@@ -1,14 +1,14 @@
 package gama.extension.GTFS.skills;
 
-import gama.annotations.precompiler.GamlAnnotations.skill;
-import gama.annotations.precompiler.GamlAnnotations.vars;
-import gama.annotations.precompiler.GamlAnnotations.variable;
-import gama.annotations.precompiler.GamlAnnotations.getter;
-import gama.annotations.precompiler.GamlAnnotations.setter;
-import gama.annotations.precompiler.GamlAnnotations.doc;
-import gama.core.metamodel.agent.IAgent;
-import gama.gaml.skills.Skill;
-import gama.gaml.types.IType;
+import gama.annotations.skill;
+import gama.annotations.variable;
+import gama.annotations.vars;
+import gama.annotations.doc;
+import gama.annotations.getter;
+import gama.annotations.setter;
+import gama.api.gaml.types.IType;
+import gama.api.kernel.agent.IAgent;
+import gama.api.kernel.skill.Skill;
 
 @skill(name = "TransportRouteSkill", doc = @doc("Skill for agents that represent transport routes with attributes like routeId, shortName, longName, and type."))
 @vars({
