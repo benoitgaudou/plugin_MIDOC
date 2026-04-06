@@ -1,18 +1,19 @@
 package gama.extension.GTFS;
 
-import gama.core.metamodel.shape.GamaPoint;
-import gama.core.metamodel.shape.IShape;
-import gama.core.runtime.IScope;
 import gama.gaml.operators.spatial.SpatialCreation;
-import gama.core.util.GamaListFactory;
-import gama.core.util.IList;
 import GamaGTFSUtils.SpatialUtils;
+import gama.api.runtime.scope.IScope;
+import gama.api.types.geometry.IPoint;
+import gama.api.types.geometry.IShape;
+import gama.api.types.list.GamaListFactory;
+import gama.api.types.list.IList;
+
 
 public class TransportShape {
 	private final String shapeId;
     private String routeId;
     private String tripId;
-    private final IList<GamaPoint> points; 
+    private final IList<IPoint> points; 
     private int routeType = -1;
 
     public TransportShape(String shapeId, String routeId) {
@@ -31,7 +32,7 @@ public class TransportShape {
         }
 
         IList<IShape> shapePoints = GamaListFactory.create();
-        for (GamaPoint point : points) {
+        for (IPoint point : points) {
             shapePoints.add(point);
         }
 
@@ -42,7 +43,7 @@ public class TransportShape {
     	return shapeId; 
     	}
 
-    public IList<GamaPoint> getPoints() {
+    public IList<IPoint> getPoints() {
         return points;
     }
 

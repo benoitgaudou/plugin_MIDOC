@@ -1,7 +1,7 @@
 package gama.extension.GTFS.export;
 
 import gama.core.runtime.IScope;
-import gama.extension.GTFS.GTFS_reader;
+import gama.extension.GTFS.GamaGTFSFile;
 import gama.extension.GTFS.TransportStop;
 import org.geotools.data.*;
 import org.geotools.data.simple.SimpleFeatureStore;
@@ -32,7 +32,7 @@ public class GTFSShapeExporter {
             "UNIT[\"Degree\",0.0174532925199433]]";
 
     // Export GTFS (LineString si shapes.txt existe, sinon points d'arrêts)
-    public static void exportGTFSAsShapefile(IScope scope, GTFS_reader reader, String outputPath) throws Exception {
+    public static void exportGTFSAsShapefile(IScope scope, GamaGTFSFile reader, String outputPath) throws Exception {
         File gtfsDir = reader.getFile(scope);
         File shapesFile = new File(gtfsDir, "shapes.txt");
 

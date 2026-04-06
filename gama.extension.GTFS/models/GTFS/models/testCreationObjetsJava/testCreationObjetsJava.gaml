@@ -20,18 +20,12 @@ global {
         // Create bus_stop agents from the GTFS data
         create bus_stop from: gtfs_f;
         
-        write "✅ " + string(length(bus_stop)) + " bus stops créés depuis " + gtfs_f_path;
+        write string(length(bus_stop)) + " bus stops créés depuis " + gtfs_f_path;
     }
 }
 
 // Species representing each transport stop
 species bus_stop skills: [TransportStopSkill] {
-    aspect base {
-        draw circle(100.0) at: location color: #blue;
-    }
-}
-
-species my_species skills: [TransportStopSkill] {
     aspect base {
         draw circle(100.0) at: location color: #blue;
     }

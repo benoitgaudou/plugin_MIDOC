@@ -1,17 +1,18 @@
 package gama.extension.GTFS.gaml;
 
-import gama.core.runtime.IScope;
-import gama.core.metamodel.agent.IAgent;
-import gama.core.metamodel.population.IPopulation;
-import gama.core.util.GamaListFactory;
-import gama.core.util.GamaMapFactory;
-import gama.core.util.GamaPair;
-import gama.core.util.IList;
-import gama.core.util.IMap;
+import gama.api.gaml.statements.IStatement;
+import gama.api.gaml.statements.IStatement.Create;
+import gama.api.gaml.types.Types;
+import gama.api.kernel.agent.IAgent;
+import gama.api.kernel.agent.IPopulation;
+import gama.api.runtime.scope.IScope;
+import gama.api.types.list.GamaListFactory;
+import gama.api.types.list.IList;
+import gama.api.types.map.GamaMapFactory;
+import gama.api.types.map.IMap;
+import gama.api.types.pair.GamaPairFactory;
+import gama.api.types.pair.IPair;
 import gama.extension.GTFS.TransportStop;
-import gama.gaml.statements.CreateStatement;
-import gama.gaml.statements.RemoteSequence;
-import gama.gaml.types.Types;
 
 import java.util.HashMap;
 import java.util.List;
@@ -44,11 +45,12 @@ public class TransportStopCreator implements GTFSAgentCreator {
         }
     }
 
-    @Override
-    public IList<? extends IAgent> createAgents(IScope scope, IPopulation<? extends IAgent> population, List<Map<String, Object>> inits, CreateStatement statement, RemoteSequence sequence) {
-        IList<? extends IAgent> createdAgents = population.createAgents(scope, inits.size(), inits, false, true);
+    @SuppressWarnings("unchecked")
+	@Override  
+    public IList<? extends IAgent> createAgents(IScope scope, IPopulation<? extends IAgent> population, List<Map<String, Object>> inits, Create statement, IStatement sequence) {
 
-        @SuppressWarnings("unchecked")
+    	IList<? extends IAgent> createdAgents = population.createAgents(scope, inits.size(), inits, false, true);
+
         IMap<String, IAgent> stopIdToAgentMap = GamaMapFactory.create(Types.STRING, Types.AGENT);
 
         for (IAgent agent : createdAgents) {
@@ -57,23 +59,21 @@ public class TransportStopCreator implements GTFSAgentCreator {
         }
 
         for (IAgent agent : createdAgents) {
-            @SuppressWarnings("unchecked")
-            IMap<String, IList<GamaPair<String, String>>> departureTripsInfo =
-                    (IMap<String, IList<GamaPair<String, String>>>) agent.getAttribute("departureTripsInfo");
+            IMap<String, IList<IPair<String, String>>> departureTripsInfo =
+                    (IMap<String, IList<IPair<String, String>>>) agent.getAttribute("departureTripsInfo");
 
             if (departureTripsInfo == null || departureTripsInfo.isEmpty()) {
                 continue;
             }
 
-            @SuppressWarnings("unchecked")
-            IMap<String, IList<GamaPair<IAgent, String>>> departureStopsInfo = GamaMapFactory.create(Types.STRING, Types.LIST);
+            IMap<String, IList<IPair<IAgent, String>>> departureStopsInfo = GamaMapFactory.create(Types.STRING, Types.LIST);
 
-            for (Map.Entry<String, IList<GamaPair<String, String>>> entry : departureTripsInfo.entrySet()) {
-                IList<GamaPair<IAgent, String>> convertedStops = GamaListFactory.create(Types.PAIR);
-                for (GamaPair<String, String> pair : entry.getValue()) {
-                    IAgent stopAgent = stopIdToAgentMap.get(pair.first());
+            for (Map.Entry<String, IList<IPair<String, String>>> entry : departureTripsInfo.entrySet()) {
+                IList<IPair<IAgent, String>> convertedStops = GamaListFactory.create(Types.PAIR);
+                for (IPair<String, String> pair : entry.getValue()) {
+                    IAgent stopAgent = stopIdToAgentMap.get(pair.key());
                     if (stopAgent != null) {
-                        convertedStops.add(new GamaPair<>(stopAgent, pair.getValue(), Types.AGENT, Types.STRING));
+                        convertedStops.add(GamaPairFactory.createWith(stopAgent, pair.value(), Types.AGENT, Types.STRING));
                     }
                 }
                 departureStopsInfo.put(entry.getKey(), convertedStops);
@@ -81,7 +81,7 @@ public class TransportStopCreator implements GTFSAgentCreator {
 
             agent.setAttribute("departureStopsInfo", departureStopsInfo);
 
-            // 🔥 Important : departureShapeDistances n'a pas besoin de conversion, donc on le laisse comme il est
+            // Important : departureShapeDistances n'a pas besoin de conversion, donc on le laisse comme il est
             // (déjà chargé dans addInits)
         }
 

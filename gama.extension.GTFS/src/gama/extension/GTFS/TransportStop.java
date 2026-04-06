@@ -1,14 +1,13 @@
 package gama.extension.GTFS;
 
-import gama.core.metamodel.shape.GamaPoint;
-import gama.core.runtime.IScope;
-import gama.core.util.GamaMapFactory;
-import gama.core.util.GamaPair;
-import gama.core.util.IList;
-import gama.core.util.IMap;
-
 import GamaGTFSUtils.SpatialUtils;
-import gama.gaml.types.Types;
+import gama.api.gaml.types.Types;
+import gama.api.runtime.scope.IScope;
+import gama.api.types.geometry.IPoint;
+import gama.api.types.list.IList;
+import gama.api.types.map.GamaMapFactory;
+import gama.api.types.map.IMap;
+import gama.api.types.pair.IPair;
 
 public class TransportStop {
 
@@ -16,10 +15,10 @@ public class TransportStop {
     private String stopName;
     private double stopLat;   // Latitude originale du GTFS
     private double stopLon;   // Longitude originale du GTFS
-    private GamaPoint location;
+    private IPoint location;
     private int routeType = -1;
     private int tripNumber = 0; 
-    private IMap<String, IList<GamaPair<String, String>>> departureTripsInfo;
+    private IMap<String, IList<IPair<String, String>>> departureTripsInfo;
     private IMap<String, String> tripShapeMap;
     private IMap<String, IList<Double>> departureShapeDistances;
 
@@ -40,7 +39,7 @@ public class TransportStop {
     // --- ACCESSEURS classiques
     public String getStopId() { return stopId; }
     public String getStopName() { return stopName; }
-    public GamaPoint getLocation() { return location; }
+    public IPoint getLocation() { return location; }
     public int getRouteType() { return routeType; }
     public void setRouteType(int routeType) { this.routeType = routeType; }
 
@@ -48,13 +47,13 @@ public class TransportStop {
     public double getStopLat() { return stopLat; }
     public double getStopLon() { return stopLon; }
 
-    public IMap<String, IList<GamaPair<String, String>>> getDepartureTripsInfo() { return departureTripsInfo; }
+    public IMap<String, IList<IPair<String, String>>> getDepartureTripsInfo() { return departureTripsInfo; }
 
-    public void addStopPairs(String tripId, IList<GamaPair<String, String>> stopPairs) {
+    public void addStopPairs(String tripId, IList<IPair<String, String>> stopPairs) {
         departureTripsInfo.put(tripId, stopPairs);
     }
 
-    public void setDepartureTripsInfo(IMap<String, IList<GamaPair<String, String>>> departureTripsInfo) {
+    public void setDepartureTripsInfo(IMap<String, IList<IPair<String, String>>> departureTripsInfo) {
         this.departureTripsInfo = departureTripsInfo;
     }
 
@@ -96,7 +95,7 @@ public class TransportStop {
                 + "tripShapeMap=" + tripShapeMap + "}";
     }
 
-    public GamaPoint getGeometry() {
+    public IPoint getGeometry() {
         return location;
     }
 }

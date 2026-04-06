@@ -2,10 +2,10 @@ package gama.extension.GTFS;
 
 import java.util.Map;
 
-import gama.core.util.GamaListFactory;
-import gama.core.util.GamaMapFactory;
-import gama.core.util.IList;
-import gama.core.util.IMap;
+import gama.api.types.list.GamaListFactory;
+import gama.api.types.list.IList;
+import gama.api.types.map.GamaMapFactory;
+import gama.api.types.map.IMap;
 
 public class TransportTrip {
 
@@ -46,7 +46,7 @@ public class TransportTrip {
 		IMap<String, Object> stopDetail = GamaMapFactory.create();
         stopDetail.put("stopId", stopId);
         stopDetail.put("departureTime", departureTime);
-        stopDetail.put("shapeDistTraveled", shapeDistTraveled); // 🔥 ajoute la distance
+        stopDetail.put("shapeDistTraveled", shapeDistTraveled); // ajoute la distance
         stopDetails.add(stopDetail);
     }
 

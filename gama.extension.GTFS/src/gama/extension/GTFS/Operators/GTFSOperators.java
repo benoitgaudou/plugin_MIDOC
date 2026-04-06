@@ -1,12 +1,12 @@
 package gama.extension.GTFS.Operators;
 
-import gama.core.metamodel.shape.GamaShape;
-import gama.core.runtime.IScope;
-import gama.core.util.GamaDate;
-import gama.extension.GTFS.GTFS_reader;
-import gama.gaml.types.IType;
-import gama.annotations.precompiler.IOperatorCategory;
-import gama.annotations.precompiler.GamlAnnotations.operator;
+import gama.annotations.operator;
+import gama.annotations.support.IOperatorCategory;
+import gama.api.gaml.types.IType;
+import gama.api.runtime.scope.IScope;
+import gama.api.types.date.GamaDateFactory;
+import gama.api.types.date.IDate;
+import gama.extension.GTFS.GamaGTFSFile;
 
 
 public class GTFSOperators {
@@ -16,10 +16,10 @@ public class GTFSOperators {
 		    type = IType.DATE,
 		    category = { IOperatorCategory.DATE }
 		)
-		public static GamaDate starting_date_gtfs(final IScope scope, final GTFS_reader gtfs) {
+		public static IDate starting_date_gtfs(final IScope scope, final GamaGTFSFile gtfs) {
 		    java.time.LocalDate localDate = gtfs.getStartingDate();
 		    if (localDate == null) return null;
-		    return new GamaDate(scope, localDate);
+		    return GamaDateFactory.create(scope, localDate);
 		}
 
 		@operator(
@@ -27,10 +27,10 @@ public class GTFSOperators {
 		    type = IType.DATE,
 		    category = { IOperatorCategory.DATE }
 		)
-		public static GamaDate ending_date_gtfs(final IScope scope, final GTFS_reader gtfs) {
+		public static IDate ending_date_gtfs(final IScope scope, final GamaGTFSFile gtfs) {
 		    java.time.LocalDate localDate = gtfs.getEndingDate();
 		    if (localDate == null) return null;
-		    return new GamaDate(scope, localDate);
+		    return GamaDateFactory.create(scope, localDate);
 		}
 		
 

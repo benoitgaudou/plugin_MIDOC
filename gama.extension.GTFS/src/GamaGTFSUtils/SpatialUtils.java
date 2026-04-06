@@ -1,8 +1,10 @@
 package GamaGTFSUtils;
 
-import gama.core.metamodel.shape.GamaPoint;
-import gama.core.metamodel.shape.IShape;
-import gama.core.runtime.IScope;
+import gama.api.runtime.scope.IScope;
+import gama.api.types.geometry.GamaPoint;
+import gama.api.types.geometry.GamaPointFactory;
+import gama.api.types.geometry.IPoint;
+import gama.api.types.geometry.IShape;
 import gama.gaml.operators.spatial.SpatialProjections;
 
 public class SpatialUtils {
@@ -17,7 +19,7 @@ public class SpatialUtils {
      */
     public static GamaPoint toGamaCRS(IScope scope, double lat, double lon) {
         // Create a GamaPoint for the original location
-        GamaPoint rawLocation = new GamaPoint(lon, lat, 0.0); // Longitude (X), Latitude (Y), Altitude (Z)  
+        IPoint rawLocation = GamaPointFactory.create(lon, lat, 0.0); // Longitude (X), Latitude (Y), Altitude (Z)  
 
         // Transform the point to the GAMA CRS using "to_GAMA_CRS"
         IShape transformedShape = SpatialProjections.to_GAMA_CRS(scope, rawLocation, "EPSG:4326");

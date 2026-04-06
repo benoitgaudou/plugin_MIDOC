@@ -1,21 +1,20 @@
 package gama.extension.GTFS.gaml;
 
-import gama.core.common.interfaces.ICreateDelegate;
-import gama.core.runtime.IScope;
-import gama.core.util.GamaListFactory;
-import gama.core.util.IList;
-import gama.core.metamodel.agent.IAgent;
-import gama.core.metamodel.population.IPopulation;
-import gama.extension.GTFS.GTFS_reader;
+import gama.api.additions.delegates.ICreateDelegate;
+import gama.api.gaml.expressions.IExpression;
+import gama.api.gaml.statements.IStatement;
+import gama.api.gaml.symbols.Arguments;
+import gama.api.gaml.types.Cast;
+import gama.api.gaml.types.IType;
+import gama.api.gaml.types.Types;
+import gama.api.kernel.agent.IAgent;
+import gama.api.kernel.agent.IPopulation;
+import gama.api.kernel.species.ISpecies;
+import gama.api.runtime.scope.IScope;
+import gama.api.types.list.GamaListFactory;
+import gama.api.types.list.IList;
+import gama.extension.GTFS.GamaGTFSFile;
 
-import gama.gaml.expressions.IExpression;
-import gama.gaml.operators.Cast;
-import gama.gaml.species.ISpecies;
-import gama.gaml.statements.Arguments;
-import gama.gaml.statements.CreateStatement;
-import gama.gaml.statements.RemoteSequence;
-import gama.gaml.types.IType;
-import gama.gaml.types.Types;
 import java.util.List;
 import java.util.Map;
 
@@ -33,13 +32,13 @@ public class CreateAgentsFromGTFS implements ICreateDelegate {
 
     @Override
     public boolean acceptSource(IScope scope, Object source) {
-        return source instanceof GTFS_reader;
+        return source instanceof GamaGTFSFile;
     }
 
     @Override
-    public boolean createFrom(IScope scope, List<Map<String, Object>> inits, Integer max, Object source, Arguments init, CreateStatement statement) {
+    public boolean createFrom(IScope scope, List<Map<String, Object>> inits, Integer max, Object source, Arguments init, IStatement.Create statement) {
 
-        GTFS_reader gtfsReader = (GTFS_reader) source;
+        GamaGTFSFile gtfsReader = (GamaGTFSFile) source;
         IExpression speciesExpr = statement.getFacet("species");
         ISpecies targetSpecies = Cast.asSpecies(scope, speciesExpr.value(scope));
 
@@ -81,15 +80,16 @@ public class CreateAgentsFromGTFS implements ICreateDelegate {
     }
 
     @Override
-    public IList<? extends IAgent> createAgents(IScope scope, IPopulation<? extends IAgent> population, List<Map<String, Object>> inits, CreateStatement statement, RemoteSequence sequence) {
-        if (inits.isEmpty()) {
+    public IList<? extends IAgent> createAgents(IScope scope, IPopulation<? extends IAgent> population, List<Map<String, Object>> inits, IStatement.Create statement, IStatement sequence) {
+
+    	if (inits.isEmpty()) {
             System.out.println("[INFO] No agents to create.");
             return GamaListFactory.create(Types.AGENT); 
         }
         
         System.out.println("[DEBUG] Checking trip inits before creating agents...");
         
-        List<? extends IAgent> createdAgents = agentCreator.createAgents(scope, population, inits, statement, sequence);
+        IList<? extends IAgent> createdAgents = agentCreator.createAgents(scope, population, inits, statement, sequence);
         IList<IAgent> agentList = GamaListFactory.create(Types.AGENT);
         agentList.addAll(createdAgents); 
         
@@ -105,7 +105,7 @@ public class CreateAgentsFromGTFS implements ICreateDelegate {
     /**
      * Selects the appropriate agent creation handler based on the species type.
      */
-    private GTFSAgentCreator getAgentCreator(IScope scope, ISpecies species, GTFS_reader gtfsReader) {
+    private GTFSAgentCreator getAgentCreator(IScope scope, ISpecies species, GamaGTFSFile gtfsReader) {
         if (species.implementsSkill("TransportStopSkill")) {
             return new TransportStopCreator(gtfsReader != null ? gtfsReader.getStops() : null);
         } else if (species.implementsSkill("TransportShapeSkill")) {

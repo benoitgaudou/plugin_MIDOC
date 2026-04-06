@@ -1,7 +1,7 @@
 package gama.extension.GTFS.skills;
 
 import gama.core.runtime.IScope;
-import gama.extension.GTFS.GTFS_reader;
+import gama.extension.GTFS.GamaGTFSFile;
 import gama.extension.GTFS.export.GTFSShapeExporter;
 import gama.gaml.skills.Skill;
 import gama.annotations.precompiler.GamlAnnotations.skill;
@@ -24,7 +24,7 @@ public class GTFSExportSkill extends Skill {
     public Object exportShapesToShapefile(final IScope scope) {
         try {
             // 1. Récupérer GTFS_reader déclaré globalement (ex: gtfs_f)
-            GTFS_reader reader = (GTFS_reader) scope.getGlobalVarValue("gtfs_f");
+            GamaGTFSFile reader = (GamaGTFSFile) scope.getGlobalVarValue("gtfs_f");
             if (reader == null) {
                 throw new RuntimeException("Variable globale gtfs_f non trouvée !");
             }

@@ -14,28 +14,32 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-
-import gama.core.util.GamaPair;
-import gama.annotations.precompiler.GamlAnnotations.doc;
-import gama.annotations.precompiler.GamlAnnotations.example;
-import gama.annotations.precompiler.GamlAnnotations.file;
-import gama.annotations.precompiler.IConcept;
-import gama.core.common.geometry.Envelope3D;
-import gama.core.metamodel.shape.GamaPoint;
-import gama.core.runtime.IScope;
-import gama.core.runtime.exceptions.GamaRuntimeException;
-import gama.core.util.GamaListFactory;
-import gama.core.util.GamaMapFactory;
-import gama.core.util.IList;
-import gama.core.util.IMap;
-import gama.core.util.file.GamaFile;
-import gama.gaml.types.IType;
-import gama.gaml.types.Types;
 import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvValidationException;
+
+import gama.annotations.doc;
+import gama.annotations.file;
+import gama.annotations.example;
+import gama.annotations.support.IConcept;
+import gama.api.exceptions.GamaRuntimeException;
+import gama.api.gaml.types.IType;
+import gama.api.gaml.types.Types;
+import gama.api.runtime.scope.IScope;
+import gama.api.types.date.IDate;
+import gama.api.types.file.GamaFile;
+import gama.api.types.geometry.GamaPointFactory;
+import gama.api.types.list.GamaListFactory;
+import gama.api.types.list.IList;
+import gama.api.types.map.GamaMapFactory;
+import gama.api.types.map.IMap;
+import gama.api.types.geometry.IPoint;
+import gama.api.types.pair.GamaPairFactory;
+import gama.api.types.pair.IPair;
+import gama.api.utils.geometry.GamaEnvelopeFactory;
+import gama.api.utils.geometry.IEnvelope;
 
 /**
  * Reading and processing GTFS files in GAMA. This class reads multiple GTFS files
@@ -50,7 +54,7 @@ import com.opencsv.exceptions.CsvValidationException;
     concept = { IConcept.FILE },
     doc = @doc("GTFS files represent public transportation data in CSV format, typically with the '.txt' extension.")
 )
-public class GTFS_reader extends GamaFile<IList<String>, String> {
+public class GamaGTFSFile extends GamaFile<IList<String>, String> {
 
     // Required files for GTFS data
     private static final String[] REQUIRED_FILES = {
@@ -87,10 +91,9 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
     @doc (
             value = "This constructor allows loading GTFS files from a specified directory.",
             examples = { @example (value = "GTFS_reader gtfs <- GTFS_reader(scope, \"path_to_gtfs_directory\");")})
-    public GTFS_reader(final IScope scope, final String pathName) throws GamaRuntimeException {
+    public GamaGTFSFile(final IScope scope, final String pathName) throws GamaRuntimeException {
         super(scope, pathName);
         this.initScope = scope;
-        
         
         // Debug: Print the GTFS path in the GAMA console
         if (scope != null && scope.getGui() != null) {
@@ -111,7 +114,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
        
     }
 
-    public GTFS_reader(final String pathName) throws GamaRuntimeException {
+    public GamaGTFSFile(final String pathName) throws GamaRuntimeException {
         super(null, pathName);  // Pass 'null' for IScope as it is not needed here
         this.initScope = null;
         checkValidity(null);  // Pass 'null' if IScope is not necessary for this check
@@ -157,7 +160,6 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
     }
     
     
-    @SuppressWarnings("unchecked")
     private void buildFakeShapesLazily(final IScope scope, final IMap<String, Integer> routeTypeMap) {
         System.out.println("[LAZY] Building fake shapes now (requested by create transport_shape)...");
         for (TransportTrip trip : tripsMap.values()) {
@@ -169,7 +171,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
             }
             if (shapesMap.containsKey(fakeShapeId)) continue;
 
-            List<GamaPoint> pts = new ArrayList<>();
+            List<IPoint> pts = new ArrayList<>();
             List<String> orderedStops = trip.getStopsInOrder();
             if (orderedStops == null || orderedStops.isEmpty()) {
                 List<String[]> stopTimesData = gtfsData.get("stop_times.txt");
@@ -193,20 +195,20 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
                     for (String[] st : lines) {
                         String stopId = st[stopIdIdx].trim().replace("\"","").replace("'","");
                         TransportStop stop = stopsMap.get(stopId);
-                        if (stop != null) pts.add(new GamaPoint(stop.getStopLat(), stop.getStopLon()));
+                        if (stop != null) pts.add(GamaPointFactory.create(stop.getStopLat(), stop.getStopLon()));
                     }
                 }
             } else {
                 for (String stopId : orderedStops) {
                     TransportStop st = stopsMap.get(stopId);
-                    if (st != null) pts.add(new GamaPoint(st.getStopLat(), st.getStopLon()));
+                    if (st != null) pts.add(GamaPointFactory.create(st.getStopLat(), st.getStopLon()));
                 }
             }
 
             if (pts.size() > 1) {
                 String routeId = trip.getRouteId();
                 TransportShape fake = new TransportShape(fakeShapeId, routeId);
-                for (GamaPoint p : pts) { fake.addPoint(p.getX(), p.getY(), scope); }
+                for (IPoint p : pts) { fake.addPoint(p.getX(), p.getY(), scope); }
                 if (routeTypeMap != null && routeTypeMap.containsKey(routeId)) {
                     fake.setRouteType(routeTypeMap.get(routeId));
                 }
@@ -251,7 +253,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
         }
         Set<String> requiredFilesSet = new HashSet<>(Set.of(REQUIRED_FILES));
         System.out.println("Required GTFS files: " + requiredFilesSet);
-        System.out.println("➡️ Vérification du dossier GTFS : " + getName(null));
+        System.out.println("Vérification du dossier GTFS : " + getName(null));
         File[] files = folder.listFiles();
         //System.out.println("Liste des fichiers trouvés : " + Arrays.toString(files));
         if (files != null) {
@@ -291,11 +293,11 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
                     	Map<String, Integer> headerMap = new HashMap<>();
                         	// 3.1 Lit le fichier CSV et récupère le contenu
                     	List<String[]> fileContent = readCsvFileOpenCSV(file, headerMap);
-                    	String sepStr;
-                        if (separator == ',') sepStr = "virgule (,)";
-                        else if (separator == ';') sepStr = "point-virgule (;)";
-                        else if (separator == '\t') sepStr = "tabulation";
-                        else sepStr = String.valueOf(separator);
+//                    	String sepStr;
+//                        if (separator == ',') sepStr = "virgule (,)";
+//                        else if (separator == ';') sepStr = "point-virgule (;)";
+//                        else if (separator == '\t') sepStr = "tabulation";
+//                        else sepStr = String.valueOf(separator);
 
                         	// 4. Stocke le contenu du fichier et le header dans les maps
                     	gtfsData.put(file.getName(), fileContent);
@@ -400,7 +402,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
     	    }
     	}
     
-    private void createTransportObjectsWithFakeShapes(
+/*    private void createTransportObjectsWithFakeShapes(
     	    IScope scope,
     	    IMap<String, Integer> routeTypeMap
     	) {
@@ -439,17 +441,17 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
     	                }
     	            }
     	            // On construit la fake polyline avec les coordonnées des stops
-    	            List<GamaPoint> shapePoints = new ArrayList<>();
+    	            List<IPoint> shapePoints = new ArrayList<>();
     	            for (String stopId : stopIdsInOrder) {
     	                TransportStop stop = stopsMap.get(stopId);
     	                if (stop != null) {
-    	                    shapePoints.add(new GamaPoint(stop.getStopLat(), stop.getStopLon()));
+    	                    shapePoints.add(GamaPointFactory.create(stop.getStopLat(), stop.getStopLon()));
     	                }
     	            }
     	            // Crée le fake shape seulement s'il y a au moins 2 points
     	            if (shapePoints.size() > 1) {
     	            	TransportShape fakeShape = new TransportShape(fakeShapeId, routeId);
-    	                for (GamaPoint pt : shapePoints) fakeShape.addPoint(pt.getX(), pt.getY(), scope);
+    	                for (IPoint pt : shapePoints) fakeShape.addPoint(pt.getX(), pt.getY(), scope);
     	                // On peut setter la routeType à ce fakeShape
     	                if (routeTypeMap.containsKey(routeId)) fakeShape.setRouteType(routeTypeMap.get(routeId));
     	                // TripId pour référence
@@ -466,6 +468,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
     	        }
     	    }
     	}
+*/
     
     private void createTripsWithoutShapes(IScope scope, IMap<String, Integer> routeTypeMap) {
         List<String[]> tripsData = gtfsData.get("trips.txt");
@@ -637,11 +640,11 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
                 if (stop != null && stop.getRouteType() == -1) {
                     stop.setRouteType(routeType);
                     propagated++;
-                    System.out.println("[INFO] ✅ Propagation : stop " + stopId + " reçoit routeType " + routeType + " depuis trip " + trip.getTripId());
+                    System.out.println("[INFO] Propagation : stop " + stopId + " reçoit routeType " + routeType + " depuis trip " + trip.getTripId());
                 }
             }
         }
-        System.out.println("✅ Tous les stops ont reçu leur routeType à partir des trips complets. (nouveaux assignés : " + propagated + ")");
+        System.out.println("Tous les stops ont reçu leur routeType à partir des trips complets. (nouveaux assignés : " + propagated + ")");
         System.out.println("[INFO] computeDepartureInfo completed.");
 
         System.out.println("[INFO] Réinitialisation des routeType à -1 pour tous les stops...");
@@ -663,7 +666,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
                 }
             }
         }
-        System.out.println("✅ Tous les stops ont reçu leur routeType à partir des trips complets. (nouveaux assignés : " + counter + ")");
+        System.out.println("Tous les stops ont reçu leur routeType à partir des trips complets. (nouveaux assignés : " + counter + ")");
 
     }
 
@@ -805,9 +808,9 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
     }
 
     @Override
-    public Envelope3D computeEnvelope(final IScope scope) {
+    public IEnvelope computeEnvelope(final IScope scope) {
         // Provide a default implementation or return an empty envelope
-        return Envelope3D.EMPTY;
+        return GamaEnvelopeFactory.EMPTY;
     }
 
     public List<TransportTrip> getActiveTripsForDate(IScope scope, LocalDate date) {
@@ -833,8 +836,8 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
         try {
             Object startingDateObj = scope != null ? scope.getGlobalVarValue("starting_date") : null;
             
-         // ✅ LOGS DEBUG CAS 3
-            System.out.println("🔍 DEBUG CAS 3 - starting_date check:");
+         // LOGS DEBUG CAS 3
+            System.out.println("DEBUG CAS 3 - starting_date check:");
             System.out.println("   → scope: " + scope);
             System.out.println("   → scope != null: " + (scope != null));
             System.out.println("   → startingDateObj: " + startingDateObj);
@@ -848,8 +851,8 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
             simulationDate = null; // reset avant
 
             if (startingDateObj != null) {
-                if (startingDateObj instanceof gama.core.util.GamaDate) {
-                    gama.core.util.GamaDate gamaDate = (gama.core.util.GamaDate) startingDateObj;
+                if (startingDateObj instanceof IDate) {
+                    IDate gamaDate = (IDate) startingDateObj;
                     LocalDateTime localDateTime = gamaDate.getLocalDateTime();
                     LocalDate dateValue = localDateTime.toLocalDate();
 
@@ -877,7 +880,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
                 startingDateDefini = true;
                 System.out.println("[INFO] starting_date DÉFINI: " + simulationDate);
             } else {
-                // ✅ CAS 3 : starting_date non défini OU date par défaut
+                // CAS 3 : starting_date non défini OU date par défaut
                 startingDateDefini = false;
                 useAllTrips = true;
                 System.out.println("[INFO] starting_date NON DÉFINI → TOUS LES TRIPS SERONT UTILISÉS");
@@ -892,19 +895,19 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
         Set<String> activeTripIds;
         
         if (useAllTrips) {
-            // ✅ CAS 3 : Utiliser TOUS les trips
+            // CAS 3 : Utiliser TOUS les trips
             activeTripIds = new HashSet<>(tripsMap.keySet());
             System.out.println("=== CAS 3 : TOUS LES TRIPS UTILISÉS ===");
             System.out.println("Nombre total de trips: " + activeTripIds.size());
         } else {
-            // ✅ CAS 1 & 2 : Filtrage par date (logique existante)
+            // CAS 1 & 2 : Filtrage par date (logique existante)
             activeTripIds = getActiveTripIdsForDate(scope, simulationDate);
             System.out.println("=== CAS 1/2 : FILTRAGE PAR DATE ===");
             System.out.println("Date utilisée: " + simulationDate);
             System.out.println("Trips actifs trouvés: " + activeTripIds.size());
         }
         
-        System.out.println("🔍 DEBUG Java - activeTripIds.size() = " + activeTripIds.size());
+        System.out.println("DEBUG Java - activeTripIds.size() = " + activeTripIds.size());
        
 
         // 3. Traitement des stop_times (identique pour tous les cas)
@@ -930,7 +933,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
         int totalAdded = 0;
         int totalSkipped = 0;
         int totalMissingTrip = 0;
-        int totalFilteredOut = 0; // ✅ NOUVEAU compteur
+        int totalFilteredOut = 0; // NOUVEAU compteur
         
         int processedTrips = 0;
         int filteredTrips = 0;
@@ -946,16 +949,16 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
                 
                 
                 
-                // ✅ FILTRAGE CONDITIONNEL selon la stratégie
+                // FILTRAGE CONDITIONNEL selon la stratégie
                 if (!useAllTrips && !activeTripIds.contains(tripId)) {
                     totalFilteredOut++;
                     filteredTrips++;
-                    continue; // ✅ Skip seulement si on filtre par date      
+                    continue; // Skip seulement si on filtre par date      
                 }
                 processedTrips++; 
                 String stopId = fields[stopIdIndex].trim().replace("\"", "").replace("'", "");
                 String departureTime = fields[departureTimeIndex];
-                int stopSequence = Integer.parseInt(fields[stopSequenceIndex]);
+//                int stopSequence = Integer.parseInt(fields[stopSequenceIndex]);
 
                 TransportTrip trip = tripsMap.get(tripId);
                 if (trip == null) {
@@ -981,12 +984,12 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
             }
         }
         
-        System.out.println("🔍 DEBUG stop_times boucle:");
+        System.out.println("DEBUG stop_times boucle:");
         System.out.println("   → Trips processés: " + processedTrips);
         System.out.println("   → Trips filtrés: " + filteredTrips);
 
         // 5. Résumé avec nouvelles métriques
-        System.out.println("🔎 Résumé computeDepartureInfo():");
+        System.out.println("Résumé computeDepartureInfo():");
         System.out.println("   → Stratégie: " + (useAllTrips ? "TOUS LES TRIPS" : "FILTRAGE PAR DATE"));
         System.out.println("   → starting_date défini: " + startingDateDefini);
         if (!useAllTrips) {
@@ -999,9 +1002,9 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
         System.out.println("   → Trips filtrés par date : " + totalFilteredOut);
 
         // 6. Création des departureTripsInfo (identique)
-        IMap<String, IList<GamaPair<String, String>>> departureTripsInfo = GamaMapFactory.create(Types.STRING, Types.LIST);
+        IMap<String, IList<IPair<String, String>>> departureTripsInfo = GamaMapFactory.create(Types.STRING, Types.LIST);
         
-        // ✅ IMPORTANT : Utiliser la même logique de filtrage ici
+        // IMPORTANT : Utiliser la même logique de filtrage ici
         Set<String> tripsToProcess = useAllTrips ? tripsMap.keySet() : activeTripIds;
         
         for (String tripId : tripsToProcess) {
@@ -1010,7 +1013,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
             
             IList<String> stopsInOrder = trip.getStopsInOrder();
             IList<IMap<String, Object>> stopDetails = trip.getStopDetails();
-            IList<GamaPair<String, String>> stopPairs = GamaListFactory.create(Types.PAIR);
+            IList<IPair<String, String>> stopPairs = GamaListFactory.create(Types.PAIR);
 
             if (stopsInOrder.isEmpty() || stopDetails.size() != stopsInOrder.size()) continue;
 
@@ -1018,7 +1021,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
                 String stopId = stopsInOrder.get(i);
                 String departureTime = stopDetails.get(i).get("departureTime").toString();
                 String departureInSeconds = convertTimeToSeconds(departureTime);
-                stopPairs.add(new GamaPair<>(stopId, departureInSeconds, Types.STRING, Types.STRING));
+                stopPairs.add(GamaPairFactory.createWith(stopId, departureInSeconds, Types.STRING, Types.STRING));
             }
             departureTripsInfo.put(tripId, stopPairs);
         }
@@ -1079,7 +1082,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
             }
         }
 
-        System.out.println("🔍 DEBUG stops de départ:");
+        System.out.println("DEBUG stops de départ:");
         System.out.println("   → Trips traités pour stops départ: " + tripsTraitesDansStopsDepart);
         System.out.println("   → Trips filtrés pour stops départ: " + tripsFiltresDansStopsDepart);
         System.out.println("   → Stops de départ identifiés: " + tripToFirstStop.size());
@@ -1087,7 +1090,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 
      // Utiliser les vrais stops de départ pour créer stopToTripIds
      for (String tripId : departureTripsInfo.keySet()) {
-         IList<GamaPair<String, String>> stopPairs = departureTripsInfo.get(tripId);
+         IList<IPair<String, String>> stopPairs = departureTripsInfo.get(tripId);
          if (stopPairs == null || stopPairs.isEmpty()) continue;
 
          // Utiliser le stop avec stop_sequence = 1 si disponible
@@ -1096,15 +1099,15 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
          
          // Fallback : si pas de stop_sequence = 1, utiliser le premier dans la liste
          if (firstStopId == null) {
-             firstStopId = stopPairs.get(0).key;
-             departureTime = stopPairs.get(0).value;
+             firstStopId = stopPairs.get(0).key();
+             departureTime = stopPairs.get(0).value();
              System.out.println("[WARNING] Trip " + tripId + " n'a pas de stop_sequence=1, utilise le premier stop rencontré: " + firstStopId);
          }
 
          // Créer la signature pour éviter les doublons
          StringBuilder stopSequence = new StringBuilder();
-         for (GamaPair<String, String> pair : stopPairs) {
-             stopSequence.append(pair.key).append(";");
+         for (IPair<String, String> pair : stopPairs) {
+             stopSequence.append(pair.key()).append(";");
          }
          String signature = firstStopId + "_" + departureTime + "_" + stopSequence;
 
@@ -1119,8 +1122,8 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
          List<String> tripIds = entry.getValue();
 
          tripIds.sort((id1, id2) -> {
-             String t1 = tripToFirstStopTime.getOrDefault(id1, departureTripsInfo.get(id1).get(0).value);
-             String t2 = tripToFirstStopTime.getOrDefault(id2, departureTripsInfo.get(id2).get(0).value);
+             String t1 = tripToFirstStopTime.getOrDefault(id1, departureTripsInfo.get(id1).get(0).value());
+             String t2 = tripToFirstStopTime.getOrDefault(id2, departureTripsInfo.get(id2).get(0).value());
              return Integer.compare(Integer.parseInt(t1), Integer.parseInt(t2));
          });
 
@@ -1128,7 +1131,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
          if (stop == null) continue;
          stop.ensureDepartureTripsInfo();
          for (String tripId : tripIds) {
-             IList<GamaPair<String, String>> pairs = departureTripsInfo.get(tripId);
+             IList<IPair<String, String>> pairs = departureTripsInfo.get(tripId);
              stop.addStopPairs(tripId, pairs);
          }
          stop.setTripNumber(stop.getDepartureTripsInfo().size());
@@ -1144,15 +1147,15 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
      System.out.println("Nombre de stops avec departureTripsInfo non vide : " + nbStopsAvecTrips);
      System.out.println("Nombre de trips au total dans tripsMap : " + tripsMap.size());
      System.out.println("Nombre de stops de départ identifiés (stop_sequence=1) : " + tripToFirstStop.size());
-     System.out.println("✅ computeDepartureInfo completed successfully.");
+     System.out.println("computeDepartureInfo completed successfully.");
  }
 
 
  private Set<String> getActiveTripIdsForDate(IScope scope, LocalDate date) {
 	    System.out.println("\n=== DÉBUT getActiveTripIdsForDate ===");
-	    System.out.println("🔍 Recherche trips actifs pour la date: " + date);
-	    System.out.println("🔍 Jour de la semaine: " + date.getDayOfWeek());
-	    System.out.println("🔍 Format GTFS: " + date.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
+	    System.out.println("Recherche trips actifs pour la date: " + date);
+	    System.out.println("Jour de la semaine: " + date.getDayOfWeek());
+	    System.out.println("Format GTFS: " + date.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
 	    
 	    Set<String> validTripIds = new HashSet<>();
 	    Map<String, String> tripIdToServiceId = new HashMap<>();
@@ -1163,14 +1166,14 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 	    IMap<String, Integer> tripsHeader = headerMaps.get("trips.txt");
 
 	    if (tripsData == null || tripsHeader == null) {
-	        System.err.println("❌ [ERROR] trips.txt data or headers are missing!");
+	        System.err.println("[ERROR] trips.txt data or headers are missing!");
 	        return validTripIds;
 	    }
 
 	    Integer tripIdIdx = findColumnIndex(tripsHeader, "trip_id");
 	    Integer serviceIdIdx = findColumnIndex(tripsHeader, "service_id");
 	    if (tripIdIdx == null || serviceIdIdx == null) {
-	        System.err.println("❌ [ERROR] trip_id or service_id column missing in trips.txt!");
+	        System.err.println("[ERROR] trip_id or service_id column missing in trips.txt!");
 	        System.err.println("   → trip_id index: " + tripIdIdx);
 	        System.err.println("   → service_id index: " + serviceIdIdx);
 	        return validTripIds;
@@ -1187,7 +1190,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 	            tripsIgnored++;
 	        }
 	    }
-	    System.out.println("📊 trips.txt traitement:");
+	    System.out.println("trips.txt traitement:");
 	    System.out.println("   → Trips traités: " + tripsProcessed);
 	    System.out.println("   → Trips ignorés: " + tripsIgnored);
 	    System.out.println("   → Services uniques: " + tripIdToServiceId.values().stream().distinct().count());
@@ -1199,16 +1202,16 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 	    boolean hasCalendar = (calendarData != null && !calendarData.isEmpty());
 	    boolean hasCalendarDates = (calendarDatesData != null && !calendarDatesData.isEmpty());
 
-	    System.out.println("📊 Disponibilité fichiers:");
-	    System.out.println("   → calendar.txt: " + (hasCalendar ? "✅ (" + calendarData.size() + " lignes)" : "❌"));
-	    System.out.println("   → calendar_dates.txt: " + (hasCalendarDates ? "✅ (" + calendarDatesData.size() + " lignes)" : "❌"));
+	    System.out.println("Disponibilité fichiers:");
+	    System.out.println("   → calendar.txt: " + (hasCalendar ? "(" + calendarData.size() + " lignes)" : "X"));
+	    System.out.println("   → calendar_dates.txt: " + (hasCalendarDates ? " (" + calendarDatesData.size() + " lignes)" : "X"));
 
 	    Set<String> activeServiceIds = new HashSet<>();
 	    java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd");
 	    String dayOfWeek = date.getDayOfWeek().toString().toLowerCase();
 	    String dateString = date.format(formatter);
 
-	    System.out.println("🔍 Paramètres recherche:");
+	    System.out.println("Paramètres recherche:");
 	    System.out.println("   → Date: " + dateString);
 	    System.out.println("   → Jour: " + dayOfWeek);
 
@@ -1217,7 +1220,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 	        System.out.println("\n--- Phase 3: Traitement calendar.txt ---");
 	        IMap<String, Integer> calendarHeader = headerMaps.get("calendar.txt");
 	        if (calendarHeader == null) {
-	            System.err.println("❌ [ERROR] calendar.txt headers missing!");
+	            System.err.println("[ERROR] calendar.txt headers missing!");
 	        } else {
 	            try {
 	                Integer serviceIdIdxCal = findColumnIndex(calendarHeader, "service_id");
@@ -1225,14 +1228,14 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 	                Integer endIdx = findColumnIndex(calendarHeader, "end_date");
 	                Integer dayIdx = findColumnIndex(calendarHeader, dayOfWeek);
 	                
-	                System.out.println("📋 Index des colonnes:");
+	                System.out.println("Index des colonnes:");
 	                System.out.println("   → service_id: " + serviceIdIdxCal);
 	                System.out.println("   → start_date: " + startIdx);
 	                System.out.println("   → end_date: " + endIdx);
 	                System.out.println("   → " + dayOfWeek + ": " + dayIdx);
 	                
 	                if (serviceIdIdxCal == null || startIdx == null || endIdx == null || dayIdx == null) {
-	                    System.err.println("❌ [ERROR] Some required columns are missing in calendar.txt!");
+	                    System.err.println("[ERROR] Some required columns are missing in calendar.txt!");
 	                } else {
 	                    int servicesActifs = 0;
 	                    int servicesInactifs = 0;
@@ -1259,18 +1262,18 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 	                                if (!dayActive) servicesJourInactif++;
 	                            }
 	                        } catch (Exception e) {
-	                            System.err.println("❌ Erreur ligne calendar.txt: " + Arrays.toString(fields) + " -> " + e.getMessage());
+	                            System.err.println("Erreur ligne calendar.txt: " + Arrays.toString(fields) + " -> " + e.getMessage());
 	                        }
 	                    }
 	                    
-	                    System.out.println("📊 Résultats calendar.txt pour " + date + ":");
+	                    System.out.println("Résultats calendar.txt pour " + date + ":");
 	                    System.out.println("   → Services actifs: " + servicesActifs);
 	                    System.out.println("   → Services inactifs: " + servicesInactifs);
 	                    System.out.println("     ↳ Hors période: " + servicesHorsPeriode);
 	                    System.out.println("     ↳ Jour inactif: " + servicesJourInactif);
 	                }
 	            } catch (Exception e) {
-	                System.err.println("❌ [ERROR] Processing calendar.txt failed: " + e.getMessage());
+	                System.err.println("[ERROR] Processing calendar.txt failed: " + e.getMessage());
 	                e.printStackTrace();
 	            }
 	        }
@@ -1281,7 +1284,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 	        System.out.println("\n--- Phase 4: Traitement calendar_dates.txt ---");
 	        IMap<String, Integer> calDatesHeader = headerMaps.get("calendar_dates.txt");
 	        if (calDatesHeader == null) {
-	            System.err.println("❌ [ERROR] calendar_dates.txt headers missing!");
+	            System.err.println("[ERROR] calendar_dates.txt headers missing!");
 	        } else {
 	            try {
 	                Integer serviceIdIdxCal = findColumnIndex(calDatesHeader, "service_id");
@@ -1289,7 +1292,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 	                Integer exceptionTypeIdx = findColumnIndex(calDatesHeader, "exception_type");
 	                
 	                if (serviceIdIdxCal == null || dateIdx == null || exceptionTypeIdx == null) {
-	                    System.err.println("❌ [ERROR] Some required columns are missing in calendar_dates.txt!");
+	                    System.err.println("[ERROR] Some required columns are missing in calendar_dates.txt!");
 	                } else {
 	                    int ajouts = 0;
 	                    int suppressions = 0;
@@ -1318,17 +1321,17 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 	                                datesNonCorrespondantes++;
 	                            }
 	                        } catch (Exception e) {
-	                            System.err.println("❌ Erreur ligne calendar_dates.txt: " + Arrays.toString(fields) + " -> " + e.getMessage());
+	                            System.err.println("Erreur ligne calendar_dates.txt: " + Arrays.toString(fields) + " -> " + e.getMessage());
 	                        }
 	                    }
 	                    
-	                    System.out.println("📊 Résultats calendar_dates.txt:");
+	                    System.out.println("Résultats calendar_dates.txt:");
 	                    System.out.println("   → Services ajoutés (type=1): " + ajouts);
 	                    System.out.println("   → Services supprimés (type=2): " + suppressions);
 	                    System.out.println("   → Dates non correspondantes: " + datesNonCorrespondantes);
 	                }
 	            } catch (Exception e) {
-	                System.err.println("❌ [ERROR] Processing calendar_dates.txt failed: " + e.getMessage());
+	                System.err.println("[ERROR] Processing calendar_dates.txt failed: " + e.getMessage());
 	                e.printStackTrace();
 	            }
 	        }
@@ -1336,9 +1339,9 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 
 	    // 5. Conversion services -> trips
 	    System.out.println("\n--- Phase 5: Conversion services -> trips ---");
-	    System.out.println("📊 Services actifs identifiés: " + activeServiceIds.size());
+	    System.out.println("Services actifs identifiés: " + activeServiceIds.size());
 	    if (activeServiceIds.size() <= 10) {
-	        System.out.println("🔍 Services actifs: " + activeServiceIds);
+	        System.out.println("Services actifs: " + activeServiceIds);
 	    }
 
 	    int tripsActifs = 0;
@@ -1349,23 +1352,23 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 	        }
 	    }
 	    
-	    System.out.println("📊 Conversion résultat:");
+	    System.out.println("Conversion résultat:");
 	    System.out.println("   → Trips actifs trouvés: " + tripsActifs);
 
 	    // 6. FALLBACK SI AUCUN TRIP
 	    if (validTripIds.isEmpty()) {
-	        System.err.println("\n⚠️ [WARNING] AUCUN TRIP ACTIF pour la date: " + date);
-	        System.out.println("🔄 [FALLBACK CAS 2] Recherche d'un jour équivalent dans GTFS...");
+	        System.err.println("\n [WARNING] AUCUN TRIP ACTIF pour la date: " + date);
+	        System.out.println("[FALLBACK CAS 2] Recherche d'un jour équivalent dans GTFS...");
 	        
 	        LocalDate altDate = findFirstDateWithSameWeekDay(date);
 	        if (altDate != null && !altDate.equals(date)) {
-	            System.out.println("✅ [FALLBACK CAS 2] Jour équivalent trouvé: " + altDate);
+	            System.out.println("[FALLBACK CAS 2] Jour équivalent trouvé: " + altDate);
 	            Set<String> fallbackTrips = getActiveTripIdsForDate(scope, altDate);
-	            System.out.println("✅ [FALLBACK CAS 2] Trips récupérés: " + fallbackTrips.size());
+	            System.out.println("[FALLBACK CAS 2] Trips récupérés: " + fallbackTrips.size());
 	            return fallbackTrips;
 	        } else {
-	            System.err.println("❌ [FALLBACK CAS 2] No matching weekday found in GTFS.");
-	            // ✅ NE PAS faire de fallback vers tous les trips ici
+	            System.err.println("[FALLBACK CAS 2] No matching weekday found in GTFS.");
+	            // NE PAS faire de fallback vers tous les trips ici
 	            // Laissez le CAS 3 être géré dans computeDepartureInfo
 	        }
 	    }
@@ -1374,14 +1377,14 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 	}
 
 	private LocalDate findFirstDateWithSameWeekDay(LocalDate wantedDate) {
-	    System.out.println("\n🔍 findFirstDateWithSameWeekDay appelée...");
-	    System.out.println("🔍 Date recherchée: " + wantedDate + " (" + wantedDate.getDayOfWeek() + ")");
+	    System.out.println("\n findFirstDateWithSameWeekDay appelée...");
+	    System.out.println(" Date recherchée: " + wantedDate + " (" + wantedDate.getDayOfWeek() + ")");
 	    
 	    List<LocalDate> allDates = new ArrayList<>();
 	    java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd");
 	    
 	    // calendar.txt
-	    System.out.println("\n📅 Collecte des dates depuis calendar.txt...");
+	    System.out.println("\n Collecte des dates depuis calendar.txt...");
 	    List<String[]> calendarData = (List<String[]>) gtfsData.get("calendar.txt");
 	    if (calendarData != null && !calendarData.isEmpty()) {
 	        IMap<String, Integer> header = headerMaps.get("calendar.txt");
@@ -1397,7 +1400,7 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 	                            LocalDate start = LocalDate.parse(fields[startIdx], formatter);
 	                            LocalDate end = LocalDate.parse(fields[endIdx], formatter);
 	                            
-	                            System.out.println("   📋 Période: " + start + " → " + end);
+	                            System.out.println("   Période: " + start + " → " + end);
 	                            
 	                            for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
 	                                allDates.add(d);
@@ -1405,21 +1408,21 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 	                            }
 	                            periodesTraitees++;
 	                        } catch (Exception e) {
-	                            System.err.println("❌ Erreur parsing période: " + Arrays.toString(fields));
+	                            System.err.println("Erreur parsing période: " + Arrays.toString(fields));
 	                        }
 	                    }
 	                }
-	                System.out.println("📊 calendar.txt:");
+	                System.out.println("calendar.txt:");
 	                System.out.println("   → Périodes traitées: " + periodesTraitees);
 	                System.out.println("   → Dates ajoutées: " + datesAjoutees);
 	            }
 	        }
 	    } else {
-	        System.out.println("⚠️ calendar.txt non disponible");
+	        System.out.println("calendar.txt non disponible");
 	    }
 	    
 	    // calendar_dates.txt
-	    System.out.println("\n📅 Collecte des dates depuis calendar_dates.txt...");
+	    System.out.println("\n Collecte des dates depuis calendar_dates.txt...");
 	    List<String[]> calendarDates = (List<String[]>) gtfsData.get("calendar_dates.txt");
 	    if (calendarDates != null && !calendarDates.isEmpty()) {
 	        IMap<String, Integer> header = headerMaps.get("calendar_dates.txt");
@@ -1434,22 +1437,22 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 	                            allDates.add(d);
 	                            datesAjoutees++;
 	                        } catch (Exception e) {
-	                            System.err.println("❌ Erreur parsing date: " + Arrays.toString(fields));
+	                            System.err.println("Erreur parsing date: " + Arrays.toString(fields));
 	                        }
 	                    }
 	                }
-	                System.out.println("📊 calendar_dates.txt:");
+	                System.out.println("calendar_dates.txt:");
 	                System.out.println("   → Dates ajoutées: " + datesAjoutees);
 	            }
 	        }
 	    } else {
-	        System.out.println("⚠️ calendar_dates.txt non disponible");
+	        System.out.println("calendar_dates.txt non disponible");
 	    }
 	    
-	    System.out.println("\n📊 Total dates collectées: " + allDates.size());
+	    System.out.println("\n Total dates collectées: " + allDates.size());
 	    
 	    // Recherche du premier jour avec le même dayOfWeek
-	    System.out.println("🔍 Recherche du premier " + wantedDate.getDayOfWeek() + " disponible...");
+	    System.out.println("Recherche du premier " + wantedDate.getDayOfWeek() + " disponible...");
 	    
 	    LocalDate firstMatch = null;
 	    int correspondances = 0;
@@ -1470,16 +1473,16 @@ public class GTFS_reader extends GamaFile<IList<String>, String> {
 	        }
 	    }
 	    
-	    System.out.println("\n📊 Résultat recherche:");
+	    System.out.println("\nRésultat recherche:");
 	    System.out.println("   → Période GTFS: " + minDate + " → " + maxDate);
 	    System.out.println("   → Correspondances " + wantedDate.getDayOfWeek() + ": " + correspondances);
 	    System.out.println("   → Premier match: " + firstMatch);
 	    
 	    if (firstMatch != null) {
-	        System.out.println("✅ Date de fallback choisie: " + firstMatch);
+	        System.out.println("Date de fallback choisie: " + firstMatch);
 	        System.out.println("   → Écart avec date demandée: " + java.time.temporal.ChronoUnit.DAYS.between(wantedDate, firstMatch) + " jours");
 	    } else {
-	        System.out.println("❌ Aucun jour équivalent trouvé");
+	        System.out.println("Aucun jour équivalent trouvé");
 	    }
 	    
 	    return firstMatch;

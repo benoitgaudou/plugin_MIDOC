@@ -1,19 +1,20 @@
 package gama.extension.GTFS.skills;
 
-import gama.annotations.precompiler.GamlAnnotations.skill;
-import gama.annotations.precompiler.GamlAnnotations.vars;
-import gama.annotations.precompiler.GamlAnnotations.variable;
-import gama.annotations.precompiler.GamlAnnotations.getter;
-import gama.annotations.precompiler.GamlAnnotations.doc;
-import gama.annotations.precompiler.GamlAnnotations.action;
-import gama.core.metamodel.agent.IAgent;
-import gama.core.runtime.IScope;
-import gama.core.util.IMap;
-import gama.core.util.IList;
-import gama.core.util.GamaListFactory;
-import gama.core.util.GamaPair;
-import gama.gaml.skills.Skill;
-import gama.gaml.types.IType;
+import gama.annotations.action;
+import gama.annotations.getter;
+import gama.annotations.variable;
+import gama.annotations.vars;
+import gama.annotations.skill;
+import gama.annotations.doc;
+
+import gama.api.gaml.types.IType;
+import gama.api.kernel.agent.IAgent;
+import gama.api.kernel.skill.Skill;
+import gama.api.runtime.scope.IScope;
+import gama.api.types.list.GamaListFactory;
+import gama.api.types.list.IList;
+import gama.api.types.map.IMap;
+import gama.api.types.pair.IPair;
 
 /**
  * Skill for managing individual transport stops. Provides access to stopId, stopName,
@@ -51,8 +52,8 @@ public class TransportStopSkill extends Skill {
     // Getter for departureStopsInfo
     @SuppressWarnings("unchecked")
     @getter("departureStopsInfo")
-    public IMap<String, IList<GamaPair<IAgent, String>>> getDepartureStopsInfo(final IAgent agent) {
-        return (IMap<String, IList<GamaPair<IAgent, String>>>) agent.getAttribute("departureStopsInfo");
+    public IMap<String, IList<IPair<IAgent, String>>> getDepartureStopsInfo(final IAgent agent) {
+        return (IMap<String, IList<IPair<IAgent, String>>>) agent.getAttribute("departureStopsInfo");
     }
     
     @getter("tripNumber")
@@ -73,8 +74,8 @@ public class TransportStopSkill extends Skill {
     public boolean isDeparture(final IScope scope) {
         IAgent agent = scope.getAgent();
         @SuppressWarnings("unchecked")
-        IMap<String, IList<GamaPair<IAgent, String>>> departureStopsInfo =
-                (IMap<String, IList<GamaPair<IAgent, String>>>) agent.getAttribute("departureStopsInfo");
+        IMap<String, IList<IPair<IAgent, String>>> departureStopsInfo =
+                (IMap<String, IList<IPair<IAgent, String>>>) agent.getAttribute("departureStopsInfo");
 
         return departureStopsInfo != null && !departureStopsInfo.isEmpty();
     }
@@ -82,15 +83,15 @@ public class TransportStopSkill extends Skill {
     // Retrieve departure stop agents for a specific trip
     @getter("agentsForTrip")
     public IList<IAgent> getAgentsForTrip(final IAgent agent, final String tripId) {
-        IMap<String, IList<GamaPair<IAgent, String>>> departureStopsInfo = getDepartureStopsInfo(agent);
+        IMap<String, IList<IPair<IAgent, String>>> departureStopsInfo = getDepartureStopsInfo(agent);
         if (departureStopsInfo == null || !departureStopsInfo.containsKey(tripId)) {
             System.err.println("[ERROR] No trip info found for tripId=" + tripId + " at stopId=" + getStopId(agent));
             return GamaListFactory.create();
         }
-        IList<GamaPair<IAgent, String>> stopPairs = departureStopsInfo.get(tripId);
+        IList<IPair<IAgent, String>> stopPairs = departureStopsInfo.get(tripId);
         IList<IAgent> agentsList = GamaListFactory.create();
-        for (GamaPair<IAgent, String> pair : stopPairs) {
-            agentsList.add(pair.getKey());
+        for (IPair<IAgent, String> pair : stopPairs) {
+            agentsList.add(pair.key());
         }
         return agentsList;
     }
