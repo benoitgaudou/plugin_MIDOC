@@ -1,12 +1,12 @@
-package gama.extension.GTFS;
+package gama.extension.GTFS.gaml.file.object;
 
 import gama.gaml.operators.spatial.SpatialCreation;
-import GamaGTFSUtils.SpatialUtils;
 import gama.api.runtime.scope.IScope;
 import gama.api.types.geometry.IPoint;
 import gama.api.types.geometry.IShape;
 import gama.api.types.list.GamaListFactory;
 import gama.api.types.list.IList;
+import gama.extension.GTFS.GamaGTFSUtils.SpatialUtils;
 
 
 public class TransportShape {

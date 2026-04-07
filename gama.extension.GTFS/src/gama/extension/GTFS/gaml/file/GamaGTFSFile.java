@@ -1,0 +1,1399 @@
+package gama.extension.GTFS.gaml.file;
+
+import java.io.File;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.logging.Logger;
+
+import gama.annotations.doc;
+import gama.annotations.file;
+import gama.annotations.example;
+import gama.annotations.support.IConcept;
+import gama.api.exceptions.GamaRuntimeException;
+import gama.api.gaml.types.IType;
+import gama.api.gaml.types.Types;
+import gama.api.runtime.scope.IScope;
+import gama.api.types.date.IDate;
+import gama.api.types.file.GamaFile;
+import gama.api.types.geometry.GamaPointFactory;
+import gama.api.types.list.GamaListFactory;
+import gama.api.types.list.IList;
+import gama.api.types.map.GamaMapFactory;
+import gama.api.types.map.IMap;
+import gama.api.types.geometry.IPoint;
+import gama.api.types.pair.GamaPairFactory;
+import gama.api.types.pair.IPair;
+import gama.api.utils.geometry.GamaEnvelopeFactory;
+import gama.api.utils.geometry.IEnvelope;
+import gama.extension.GTFS.gaml.file.object.TransportRoute;
+import gama.extension.GTFS.gaml.file.object.TransportShape;
+import gama.extension.GTFS.gaml.file.object.TransportStop;
+import gama.extension.GTFS.gaml.file.object.TransportTrip;
+
+/**
+ * Reading and processing GTFS files in GAMA. This class reads multiple GTFS
+ * files and creates TransportRoute, TransportTrip, and TransportStop objects.
+ */
+@file(name = "gtfs", extensions = {
+		"txt" }, buffer_type = IType.LIST, buffer_content = IType.STRING, buffer_index = IType.INT, concept = {
+				IConcept.FILE }, doc = @doc("GTFS files represent public transportation data in CSV format, typically with the '.txt' extension."))
+public class GamaGTFSFile extends GamaFile<IList<String>, String> {
+
+	private static final Logger LOGGER = Logger.getLogger(GamaGTFSFile.class.getName());
+
+	// Required files for GTFS data
+	private static final String[] REQUIRED_FILES = { GTFSKeywords.FILE_ROUTES, GTFSKeywords.FILE_TRIPS,
+			GTFSKeywords.FILE_STOP_TIMES, GTFSKeywords.FILE_STOPS };
+
+	// Data structure to store GTFS files
+	private IMap<String, List<String[]>> gtfsData;
+
+	// New field to store header mappings for each file
+	@SuppressWarnings("unchecked")
+	private IMap<String, IMap<String, Integer>> headerMaps = GamaMapFactory.create(Types.STRING, Types.get(IMap.class));
+
+	// Collections for objects created from GTFS files
+	private IMap<String, TransportTrip> tripsMap;
+	private IMap<String, TransportStop> stopsMap;
+	private IMap<String, TransportShape> shapesMap;
+	private IMap<String, TransportRoute> routesMap;
+	private IMap<String, Integer> shapeRouteTypeMap;
+	private Map<String, Character> fileSeparators = new HashMap<>();
+
+	private boolean shapesTxtPresent = false;
+	private IMap<String, Integer> routeTypeMapGlobal;
+	private IScope initScope;
+
+	/**
+	 * Constructor for reading GTFS files.
+	 *
+	 * @param scope    The simulation context in GAMA.
+	 * @param pathName The directory path containing GTFS files.
+	 * @throws GamaRuntimeException If an error occurs while loading the files.
+	 */
+	@doc(value = "This constructor allows loading GTFS files from a specified directory.", examples = {
+			@example(value = "GTFS_reader gtfs <- GTFS_reader(scope, \"path_to_gtfs_directory\");") })
+	public GamaGTFSFile(final IScope scope, final String pathName) throws GamaRuntimeException {
+		super(scope, pathName);
+		this.initScope = scope;
+
+		// Debug: Print the GTFS path in the GAMA console
+		LOGGER.info("Loading GTFS files from: " + pathName);
+		loadGtfsFiles(scope);
+		LOGGER.info("File loading completed.");
+
+		// Create transport objects
+		LOGGER.info("Creating transport objects...");
+		createTransportObjects(scope);
+		LOGGER.info("Transport object creation completed.");
+
+	}
+
+	public boolean isShapesTxtPresent() {
+		return shapesTxtPresent;
+	}
+
+	/**
+	 * Method to retrieve the list of stops (TransportStop) from stopsMap.
+	 * 
+	 * @return List of transport stops
+	 */
+	public List<TransportStop> getStops() {
+		List<TransportStop> stopList = new ArrayList<>(stopsMap.values());
+		return stopList;
+	}
+
+	/**
+	 * Method to retrieve the list of shape (TransportShape) from shapesMap.
+	 * 
+	 * @return List of transport shapes
+	 */
+	public List<TransportShape> getShapes() {
+		// Si déjà présents, renvoyer
+		if (!shapesMap.isEmpty())
+			return new ArrayList<>(shapesMap.values());
+		// Si shapes.txt absent → construire maintenant (lazy)
+		if (!shapesTxtPresent) {
+			if (initScope == null) {
+				LOGGER.warning("[ERROR] buildFakeShapesLazily requires a non-null scope (initScope=null). "
+						+ "Call getShapes(scope) from GAML context instead.");
+				return new ArrayList<>(shapesMap.values());
+			}
+			buildFakeShapesLazily(initScope, routeTypeMapGlobal);
+		}
+		return new ArrayList<>(shapesMap.values());
+	}
+
+	public List<TransportShape> getShapes(final IScope scopeForLazy) {
+		if (!shapesMap.isEmpty())
+			return new ArrayList<>(shapesMap.values());
+		if (!shapesTxtPresent) {
+			buildFakeShapesLazily(scopeForLazy, routeTypeMapGlobal);
+		}
+		return new ArrayList<>(shapesMap.values());
+	}
+
+	private void buildFakeShapesLazily(final IScope scope, final IMap<String, Integer> routeTypeMap) {
+		System.out.println("[LAZY] Building fake shapes now (requested by create transport_shape)...");
+		for (TransportTrip trip : tripsMap.values()) {
+			String tripId = trip.getTripId();
+			String fakeShapeId = trip.getShapeId();
+			if (fakeShapeId == null || fakeShapeId.isEmpty()) {
+				fakeShapeId = "fake_" + tripId;
+				trip.setShapeId(fakeShapeId);
+			}
+			if (shapesMap.containsKey(fakeShapeId))
+				continue;
+
+			List<IPoint> pts = new ArrayList<>();
+			List<String> orderedStops = trip.getStopsInOrder();
+			if (orderedStops == null || orderedStops.isEmpty()) {
+				List<String[]> stopTimesData = gtfsData.get(GTFSKeywords.FILE_STOP_TIMES);
+				IMap<String, Integer> stopTimesHeader = headerMaps.get(GTFSKeywords.FILE_STOP_TIMES);
+				Integer tripIdIdx = findColumnIndex(stopTimesHeader, GTFSKeywords.COL_TRIP_ID);
+				Integer stopIdIdx = findColumnIndex(stopTimesHeader, GTFSKeywords.COL_STOP_ID);
+				Integer seqIdx = findColumnIndex(stopTimesHeader, GTFSKeywords.COL_STOP_SEQUENCE);
+				if (stopTimesData != null && tripIdIdx != null && stopIdIdx != null && seqIdx != null) {
+					List<String[]> lines = new ArrayList<>();
+					for (String[] st : stopTimesData) {
+						if (st != null && st.length > Math.max(tripIdIdx, Math.max(stopIdIdx, seqIdx))) {
+							if (tripId.equals(clean(st[tripIdIdx]))) {
+								lines.add(st);
+							}
+						}
+					}
+					lines.sort((a, b) -> Integer.compare(Integer.parseInt(a[seqIdx].trim()),
+							Integer.parseInt(b[seqIdx].trim())));
+					for (String[] st : lines) {
+						String stopId = clean(st[stopIdIdx]);
+						TransportStop stop = stopsMap.get(stopId);
+						if (stop != null)
+							pts.add(GamaPointFactory.create(stop.getStopLat(), stop.getStopLon()));
+					}
+				}
+			} else {
+				for (String stopId : orderedStops) {
+					TransportStop st = stopsMap.get(stopId);
+					if (st != null)
+						pts.add(GamaPointFactory.create(st.getStopLat(), st.getStopLon()));
+				}
+			}
+
+			if (pts.size() > 1) {
+				String routeId = trip.getRouteId();
+				TransportShape fake = new TransportShape(fakeShapeId, routeId);
+				for (IPoint p : pts) {
+					fake.addPoint(p.getX(), p.getY(), scope);
+				}
+				if (routeTypeMap != null && routeTypeMap.containsKey(routeId)) {
+					fake.setRouteType(routeTypeMap.get(routeId));
+				}
+				fake.setTripId(tripId);
+				shapesMap.put(fakeShapeId, fake);
+			}
+		}
+		LOGGER.info("[LAZY] Fake shapes built: " + shapesMap.size());
+	}
+
+	/**
+	 * Method to retrieve the list of trips (TransportTrip) from tripsMap.
+	 * 
+	 * @return List of transport trips
+	 */
+	public List<TransportTrip> getTrips() {
+		return new ArrayList<>(tripsMap.values());
+	}
+
+	/**
+	 * Method to retrieve the list of routes (TransportRoute) from routesMap.
+	 * 
+	 * @return List of transport routes
+	 */
+	public List<TransportRoute> getRoutes() {
+		return new ArrayList<>(routesMap.values());
+	}
+
+	/**
+	 * Method to verify the directory's validity.
+	 *
+	 * @param scope The simulation context in GAMA.
+	 * @throws GamaRuntimeException If the directory is invalid or does not contain
+	 *                              required files.
+	 */
+	@Override
+	protected void checkValidity(final IScope scope) throws GamaRuntimeException {
+		LOGGER.info("Starting directory validity check...");
+
+		File folder = getFile(scope);
+
+		if (!folder.exists() || !folder.isDirectory()) {
+			throw GamaRuntimeException.error(
+					"The provided path for GTFS files is invalid. Ensure it is a directory containing .txt files.",
+					scope);
+		}
+		Set<String> requiredFilesSet = new HashSet<>(Set.of(REQUIRED_FILES));
+		LOGGER.info("Required GTFS files: " + requiredFilesSet);
+		LOGGER.info("Vérification du dossier GTFS : " + getName(null));
+		File[] files = folder.listFiles();
+		// System.out.println("Liste des fichiers trouvés : " + Arrays.toString(files));
+		if (files != null) {
+			for (File file : files) {
+				String fileName = file.getName();
+				if (fileName.endsWith(".txt")) {
+					requiredFilesSet.remove(fileName);
+				}
+			}
+		}
+
+		if (!requiredFilesSet.isEmpty()) {
+			throw GamaRuntimeException.error("Missing GTFS files: " + requiredFilesSet, scope);
+		}
+		LOGGER.info("Directory validity check completed.");
+	}
+
+	/**
+	 * Loads GTFS files and verifies if all required files are present.
+	 */
+	@SuppressWarnings("unchecked")
+	private void loadGtfsFiles(final IScope scope) throws GamaRuntimeException {
+		gtfsData = GamaMapFactory.create(Types.STRING, Types.LIST); // Use GamaMap for storing GTFS files
+		headerMaps = GamaMapFactory.create(Types.STRING, Types.get(IMap.class));
+		try {
+			File folder = this.getFile(scope);
+			File[] files = folder.listFiles(); // List of files in the folder
+			if (files != null) {
+				for (File file : files) {
+					if (file.isFile() && file.getName().endsWith(".txt")) {
+						// 1. Détecte le séparateur
+						char separator = GtfsCsvReader.detectSeparator(file);
+						// 2. Mémorise le séparateur pour ce fichier
+						fileSeparators.put(file.getName(), separator);
+						// 3. Utilise OpenCSV avec le séparateur détecté
+						Map<String, Integer> headerMap = new HashMap<>();
+						// 3.1 Lit le fichier CSV et récupère le contenu
+						List<String[]> fileContent = GtfsCsvReader.readCsvFileOpenCSV(file, headerMap);
+						// 4. Stocke le contenu du fichier et le header dans les maps
+						gtfsData.put(file.getName(), fileContent);
+						IMap<String, Integer> headerIMap = GamaMapFactory.wrap(Types.STRING, Types.INT, headerMap);
+						headerMaps.put(file.getName(), headerIMap);
+					}
+				}
+			}
+		} catch (Exception e) {
+			LOGGER.severe("Error while loading GTFS files: " + e.getMessage());
+			throw GamaRuntimeException.create(e, scope);
+		}
+		LOGGER.info("All GTFS files have been loaded.");
+	}
+
+	/**
+	 * Retrieves the header map for a given file.
+	 *
+	 * @param fileName The name of the file
+	 * @return The header map
+	 */
+	private void createTransportObjectsWithShapes(IScope scope, IMap<String, Integer> routeTypeMap,
+			IMap<String, String> shapeRouteMap, IMap<String, Integer> shapeRouteTypeMap) {
+		// 1. Création des TransportShape à partir de shapes.txt
+		List<String[]> shapesData = gtfsData.get(GTFSKeywords.FILE_SHAPES);
+		IMap<String, Integer> headerMap = headerMaps.get(GTFSKeywords.FILE_SHAPES);
+		Integer shapeIdIndex = findColumnIndex(headerMap, GTFSKeywords.COL_SHAPE_ID);
+		Integer latIndex = findColumnIndex(headerMap, GTFSKeywords.COL_SHAPE_PT_LAT);
+		Integer lonIndex = findColumnIndex(headerMap, GTFSKeywords.COL_SHAPE_PT_LON);
+
+		for (String[] fields : shapesData) {
+			if (fields == null)
+				continue;
+			try {
+				String shapeId = clean(fields[shapeIdIndex]);
+				double lat = Double.parseDouble(fields[latIndex]);
+				double lon = Double.parseDouble(fields[lonIndex]);
+
+				TransportShape shape = shapesMap.get(shapeId);
+				if (shape == null) {
+					shape = new TransportShape(shapeId, "");
+					shapesMap.put(shapeId, shape);
+				}
+				shape.addPoint(lat, lon, scope);
+
+			} catch (Exception e) {
+				LOGGER.severe("[ERROR] Processing shape line: " + java.util.Arrays.toString(fields) + " -> "
+						+ e.getMessage());
+			}
+		}
+
+		// 2. Création des trips (avec shapeId réel)
+		List<String[]> tripsData = gtfsData.get(GTFSKeywords.FILE_TRIPS);
+		IMap<String, Integer> tripsHeaderMap = headerMaps.get(GTFSKeywords.FILE_TRIPS);
+		Integer routeIdIndex = findColumnIndex(tripsHeaderMap, GTFSKeywords.COL_ROUTE_ID);
+		Integer tripIdIndex = findColumnIndex(tripsHeaderMap, GTFSKeywords.COL_TRIP_ID);
+		Integer shapeIdIdx = findColumnIndex(tripsHeaderMap, GTFSKeywords.COL_SHAPE_ID);
+
+		for (String[] fields : tripsData) {
+			if (fields == null)
+				continue;
+			try {
+				String routeId = clean(fields[routeIdIndex]);
+				String tripId = clean(fields[tripIdIndex]);
+				String shapeId = null;
+				if (shapeIdIdx != null && fields.length > shapeIdIdx) {
+					String raw = clean(fields[shapeIdIdx]);
+					if (!raw.isEmpty())
+						shapeId = raw;
+				}
+				TransportTrip trip = tripsMap.get(tripId);
+				if (trip == null) {
+					trip = new TransportTrip(routeId, "", tripId, 0, shapeId);
+					tripsMap.put(tripId, trip);
+				}
+				if (shapeId != null && shapesMap.containsKey(shapeId)) {
+					shapeRouteTypeMap.put(shapeId, trip.getRouteType());
+					shapeRouteMap.put(shapeId, routeId);
+					shapesMap.get(shapeId).setTripId(tripId);
+				}
+			} catch (Exception e) {
+				LOGGER.severe("[ERROR] Invalid trip line in " + GTFSKeywords.FILE_TRIPS + ": "
+						+ java.util.Arrays.toString(fields) + " -> " + e.getMessage());
+			}
+		}
+
+		// 3. Assigner routeId/routeType aux shapes
+		for (TransportShape shape : shapesMap.values()) {
+			String shapeId = shape.getShapeId();
+			if (shapeRouteMap.containsKey(shapeId)) {
+				String routeId = shapeRouteMap.get(shapeId);
+				shape.setRouteId(routeId);
+			}
+			if (shapeRouteTypeMap.containsKey(shapeId)) {
+				shape.setRouteType(shapeRouteTypeMap.get(shapeId));
+			}
+		}
+
+		// 4. Assigner routeType à tous les trips
+		for (TransportTrip trip : tripsMap.values()) {
+			if (trip.getRouteType() == -1 && routeTypeMap.containsKey(trip.getRouteId())) {
+				trip.setRouteType(routeTypeMap.get(trip.getRouteId()));
+			}
+		}
+	}
+
+	private void createTripsWithoutShapes(IScope scope, IMap<String, Integer> routeTypeMap) {
+		List<String[]> tripsData = gtfsData.get(GTFSKeywords.FILE_TRIPS);
+		IMap<String, Integer> tripsHeader = headerMaps.get(GTFSKeywords.FILE_TRIPS);
+		Integer routeIdIndex = findColumnIndex(tripsHeader, GTFSKeywords.COL_ROUTE_ID);
+		Integer tripIdIndex = findColumnIndex(tripsHeader, GTFSKeywords.COL_TRIP_ID);
+		if (tripsData == null || routeIdIndex == null || tripIdIndex == null)
+			return;
+
+		for (String[] fields : tripsData) {
+			if (fields == null)
+				continue;
+			try {
+				String routeId = clean(fields[routeIdIndex]);
+				String tripId = clean(fields[tripIdIndex]);
+				String fakeShapeId = "fake_" + tripId;
+
+				TransportTrip trip = tripsMap.get(tripId);
+				if (trip == null) {
+					trip = new TransportTrip(routeId, "", tripId, 0, fakeShapeId); // shapeId placeholder
+					if (routeTypeMap.containsKey(routeId))
+						trip.setRouteType(routeTypeMap.get(routeId));
+					tripsMap.put(tripId, trip);
+				}
+			} catch (Exception ignore) {
+				LOGGER.warning("Skipping malformed trip line: " + ignore.getMessage());
+			}
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private void createTransportObjects(IScope scope) {
+		System.out.println("Starting transport object creation...");
+
+		// Initialisation des maps globales
+		routesMap = GamaMapFactory.create(Types.STRING, Types.get(TransportRoute.class));
+//		stopsMap = GamaMapFactory.create(Types.STRING, Types.get(TransportStop.class));
+		tripsMap = GamaMapFactory.create(Types.STRING, Types.get(TransportTrip.class));
+		shapesMap = GamaMapFactory.create(Types.STRING, Types.get(TransportShape.class));
+		shapeRouteTypeMap = GamaMapFactory.create(Types.STRING, Types.INT);
+
+		// Map pour lier shapeId <-> routeId, shapeId <-> routeType
+		IMap<String, String> shapeRouteMap = GamaMapFactory.create(Types.STRING, Types.STRING);
+		IMap<String, Integer> shapeRouteTypeMapLocal = GamaMapFactory.create(Types.STRING, Types.INT);
+
+		// 1. Lecture des routeType par routeId (commune)
+		IMap<String, Integer> routeTypeMap = GamaMapFactory.create(Types.STRING, Types.INT);
+		List<String[]> routesData = gtfsData.get(GTFSKeywords.FILE_ROUTES);
+		IMap<String, Integer> routesHeader = headerMaps.get(GTFSKeywords.FILE_ROUTES);
+
+		if (routesData != null && routesHeader != null) {
+			Integer routeIdIndex = findColumnIndex(routesHeader, GTFSKeywords.COL_ROUTE_ID);
+			Integer routeTypeIndex = findColumnIndex(routesHeader, GTFSKeywords.COL_ROUTE_TYPE);
+			if (routeIdIndex == null || routeTypeIndex == null) {
+				throw new RuntimeException("route_id or route_type column not found in " + GTFSKeywords.FILE_ROUTES);
+			}
+			for (String[] fields : routesData) {
+				if (fields == null)
+					continue;
+				try {
+					String routeId = clean(fields[routeIdIndex]);
+					int routeType = Integer.parseInt(fields[routeTypeIndex]);
+					routeTypeMap.put(routeId, routeType);
+				} catch (Exception e) {
+					LOGGER.severe("[ERROR] Invalid routeType in " + GTFSKeywords.FILE_ROUTES + ": "
+							+ java.util.Arrays.toString(fields) + " -> " + e.getMessage());
+				}
+			}
+		}
+
+		this.routeTypeMapGlobal = routeTypeMap;
+
+		// 2. Collecte des stop_ids utilisés (commun)
+		Set<String> usedStopIds = new HashSet<>();
+		List<String[]> stopTimesData = gtfsData.get(GTFSKeywords.FILE_STOP_TIMES);
+		IMap<String, Integer> stopTimesHeader = headerMaps.get(GTFSKeywords.FILE_STOP_TIMES);
+
+		if (stopTimesData != null && stopTimesHeader != null && stopTimesHeader.containsKey(GTFSKeywords.COL_STOP_ID)) {
+			Integer stopIdIndex = stopTimesHeader.get(GTFSKeywords.COL_STOP_ID);
+			if (stopIdIndex == null)
+				throw new RuntimeException("stop_id column not found in stop_times.txt!");
+			for (String[] fields : stopTimesData) {
+				if (fields == null || fields.length <= stopIdIndex)
+					continue;
+				usedStopIds.add(clean(fields[stopIdIndex]));
+			}
+		}
+
+		// 3. Creation of stops (only the ones used in stop_times.txt)
+		List<String[]> stopsData = gtfsData.get(GTFSKeywords.FILE_STOPS);
+		IMap<String, Integer> headerIMap = headerMaps.get(GTFSKeywords.FILE_STOPS);
+		stopsMap = TransportStop.createTransportStopsFromGtfs(scope, stopsData, headerIMap, usedStopIds);
+		
+		LOGGER.info("Finished creating TransportStop objects.");
+
+		// 4. Teste la présence de shapes.txt
+		List<String[]> shapesData = gtfsData.get(GTFSKeywords.FILE_SHAPES);
+		IMap<String, Integer> headerMap = headerMaps.get(GTFSKeywords.FILE_SHAPES);
+		boolean shapesTxtExists = (shapesData != null && headerMap != null && !shapesData.isEmpty());
+
+		// 5. Appelle la bonne méthode selon shapes.txt
+		if (shapesTxtExists) {
+			LOGGER.info("[INFO] shapes.txt found. Using standard GTFS shapes pipeline.");
+			createTransportObjectsWithShapes(scope, routeTypeMap, shapeRouteMap, shapeRouteTypeMapLocal);
+			// Fusionne dans la map globale si besoin
+			shapeRouteTypeMap.putAll(shapeRouteTypeMapLocal);
+			this.shapesTxtPresent = true;
+		} else {
+			LOGGER.info(
+					"[INFO] shapes.txt NOT found. Deferring fake shapes creation until transport_shape agents are created.");
+			this.shapesTxtPresent = false;
+			createTripsWithoutShapes(scope, routeTypeMap);
+		}
+
+		// 6. Affecte le routeType à tous les trips qui n'ont pas été remplis (commune)
+		for (TransportTrip trip : tripsMap.values()) {
+			if (trip.getRouteType() == -1 && routeTypeMap.containsKey(trip.getRouteId())) {
+				trip.setRouteType(routeTypeMap.get(trip.getRouteId()));
+			}
+		}
+
+		// 7. computeDepartureInfo (communs)
+		LOGGER.info("[INFO] Calling computeDepartureInfo...");
+		computeDepartureInfo(scope);
+
+		LOGGER.info("[INFO] Début de la propagation finale des routeType aux stops...");
+		int propagated = 0;
+		for (TransportTrip trip : tripsMap.values()) {
+			int routeType = trip.getRouteType();
+			if (routeType == -1) {
+				LOGGER.info("[DEBUG] Trip " + trip.getTripId() + " a routeType=-1 => ignoré");
+				continue;
+			}
+			List<String> orderedStops = trip.getStopsInOrder();
+			if (orderedStops == null || orderedStops.isEmpty()) {
+				continue;
+			}
+
+			for (String stopId : orderedStops) {
+				TransportStop stop = stopsMap.get(stopId);
+				if (stop != null && stop.getRouteType() == -1) {
+					stop.setRouteType(routeType);
+					propagated++;
+					LOGGER.info("[INFO] Propagation : stop " + stopId + " reçoit routeType " + routeType
+							+ " depuis trip " + trip.getTripId());
+				}
+			}
+		}
+		LOGGER.info("Tous les stops ont reçu leur routeType à partir des trips complets. (nouveaux assignés : "
+				+ propagated + ")");
+		LOGGER.info("[INFO] computeDepartureInfo completed.");
+
+		LOGGER.info("[INFO] Réinitialisation des routeType à -1 pour tous les stops...");
+		for (TransportStop stop : stopsMap.values()) {
+			stop.setRouteType(-1);
+		}
+
+		LOGGER.info("[INFO] Début de la propagation finale des routeType aux stops...");
+		int counter = 0;
+		for (TransportTrip trip : tripsMap.values()) {
+			int routeType = trip.getRouteType();
+			if (routeType == -1)
+				continue;
+
+			for (String stopId : trip.getStopsInOrder()) {
+				TransportStop stop = stopsMap.get(stopId);
+				if (stop != null && stop.getRouteType() == -1) {
+					stop.setRouteType(routeType);
+					counter++;
+				}
+			}
+		}
+		System.out.println("Tous les stops ont reçu leur routeType à partir des trips complets. (nouveaux assignés : "
+				+ counter + ")");
+	}
+
+	/**
+	 * Trouve l’index d’une colonne parmi plusieurs possibilités dans le headerMap.
+	 * 
+	 * @param headerMap La map colonne → index.
+	 * @param name      du nom (ex: "stop_id", "stopid"...).
+	 * @return L’index si trouvé, sinon null.
+	 */
+	public static Integer findColumnIndex(Map<String, Integer> headerMap, String name) {
+		if (headerMap == null)
+			return null;
+		for (String col : headerMap.keySet()) {
+			if (col.equalsIgnoreCase(name.trim()))
+				return headerMap.get(col);
+		}
+		return null;
+	}
+
+	@Override
+	protected void fillBuffer(final IScope scope) throws GamaRuntimeException {
+		System.out.println("Filling buffer...");
+		if (gtfsData == null) {
+			LOGGER.info("gtfsData is null, loading GTFS files...");
+			loadGtfsFiles(scope);
+			LOGGER.info("Finished loading GTFS files.");
+		} else
+			LOGGER.info("gtfsData is already initialized.");
+
+	}
+
+	@Override
+	public IList<String> getAttributes(final IScope scope) {
+		LOGGER.info("Retrieving GTFS data attributes...");
+		if (gtfsData != null) {
+			Set<String> keySet = gtfsData.keySet();
+			LOGGER.info("Attributes retrieved: " + keySet);
+			return GamaListFactory.createWithoutCasting(Types.STRING, keySet.toArray(new String[0]));
+		} else {
+			LOGGER.info("gtfsData is null, no attributes to retrieve.");
+			return GamaListFactory.createWithoutCasting(Types.STRING);
+		}
+	}
+
+	@Override
+	public IEnvelope computeEnvelope(final IScope scope) {
+		// Provide a default implementation or return an empty envelope
+		return GamaEnvelopeFactory.EMPTY;
+	}
+
+	public List<TransportTrip> getActiveTripsForDate(IScope scope, LocalDate date) {
+		Set<String> activeTripIds = getActiveTripIdsForDate(scope, date);
+		List<TransportTrip> activeTrips = new ArrayList<>();
+		for (String tripId : activeTripIds) {
+			TransportTrip trip = tripsMap.get(tripId);
+			if (trip != null)
+				activeTrips.add(trip);
+		}
+		return activeTrips;
+	}
+
+	@SuppressWarnings("unchecked")
+	public void computeDepartureInfo(IScope scope) {
+		System.out.println("Starting computeDepartureInfo...");
+
+		// 1. Détermination de la stratégie de filtrage
+		LocalDate simulationDate = LocalDate.now(); // Date par défaut
+		boolean startingDateDefini = false;
+		boolean useAllTrips = false;
+
+		try {
+			Object startingDateObj = scope != null ? scope.getGlobalVarValue(GTFSKeywords.GAML_VAR_STARTING_DATE)
+					: null;
+
+			// LOGS DEBUG CAS 3
+			LOGGER.info("DEBUG CAS 3 - starting_date check:");
+			LOGGER.info("   → scope: " + scope);
+			LOGGER.info("   → scope != null: " + (scope != null));
+			LOGGER.info("   → startingDateObj: " + startingDateObj);
+			LOGGER.info("   → startingDateObj == null: " + (startingDateObj == null));
+			if (startingDateObj != null) {
+				LOGGER.info("   → startingDateObj type: " + startingDateObj.getClass());
+				LOGGER.info("   → startingDateObj toString: '" + startingDateObj.toString() + "'");
+			}
+
+			boolean isDefaultDate = false;
+			simulationDate = null; // reset avant
+
+			if (startingDateObj != null) {
+				if (startingDateObj instanceof IDate) {
+					IDate gamaDate = (IDate) startingDateObj;
+					LocalDateTime localDateTime = gamaDate.getLocalDateTime();
+					LocalDate dateValue = localDateTime.toLocalDate();
+
+					// Détecter la date par défaut de GAML (1970-01-01)
+					if (dateValue.equals(LocalDate.of(1970, 1, 1))) {
+						isDefaultDate = true;
+						LOGGER.info("[INFO] Date par défaut GAML détectée (1970-01-01) → CAS 3 forcé");
+					} else {
+						simulationDate = dateValue;
+					}
+				} else if (startingDateObj instanceof java.util.Date) {
+					java.util.Date date = (java.util.Date) startingDateObj;
+					simulationDate = date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+				} else {
+					// Tentative de parsing en String
+					String dateStr = startingDateObj.toString();
+					if (dateStr.length() >= 10 && dateStr.charAt(4) == '-' && dateStr.charAt(7) == '-') {
+						String datePart = dateStr.substring(0, 10);
+						simulationDate = LocalDate.parse(datePart);
+					}
+				}
+			}
+
+			if (startingDateObj != null && !isDefaultDate && simulationDate != null) {
+				startingDateDefini = true;
+				LOGGER.info("[INFO] starting_date DÉFINI: " + simulationDate);
+			} else {
+				// CAS 3 : starting_date non défini OU date par défaut
+				startingDateDefini = false;
+				useAllTrips = true;
+				LOGGER.info("[INFO] starting_date NON DÉFINI → TOUS LES TRIPS SERONT UTILISÉS");
+			}
+		} catch (Exception e) {
+			LOGGER.info("[WARNING] Erreur parsing starting_date: " + e.getMessage());
+			startingDateDefini = false;
+			useAllTrips = true;
+			LOGGER.info("[INFO] Fallback → TOUS LES TRIPS SERONT UTILISÉS");
+		}
+		// 2. Détermination des trips actifs selon la stratégie
+		Set<String> activeTripIds;
+
+		if (useAllTrips) {
+			// CAS 3 : Utiliser TOUS les trips
+			activeTripIds = new HashSet<>(tripsMap.keySet());
+			LOGGER.info("=== CAS 3 : TOUS LES TRIPS UTILISÉS ===");
+			LOGGER.info("Nombre total de trips: " + activeTripIds.size());
+		} else {
+			// CAS 1 & 2 : Filtrage par date (logique existante)
+			activeTripIds = getActiveTripIdsForDate(scope, simulationDate);
+			LOGGER.info("=== CAS 1/2 : FILTRAGE PAR DATE ===");
+			LOGGER.info("Date utilisée: " + simulationDate);
+			LOGGER.info("Trips actifs trouvés: " + activeTripIds.size());
+		}
+
+		LOGGER.info("DEBUG Java - activeTripIds.size() = " + activeTripIds.size());
+
+		// 3. Traitement des stop_times (identique pour tous les cas)
+		List<String[]> stopTimesData = (List<String[]>) gtfsData.get(GTFSKeywords.FILE_STOP_TIMES);
+		IMap<String, Integer> stopTimesHeader = headerMaps.get(GTFSKeywords.FILE_STOP_TIMES);
+
+		if (stopTimesData == null || stopTimesHeader == null) {
+			LOGGER.warning("[ERROR] stop_times.txt data or headers are missing!");
+			return;
+		}
+
+		Integer tripIdIndex = findColumnIndex(stopTimesHeader, GTFSKeywords.COL_TRIP_ID);
+		Integer stopIdIndex = findColumnIndex(stopTimesHeader, GTFSKeywords.COL_STOP_ID);
+		Integer departureTimeIndex = findColumnIndex(stopTimesHeader, GTFSKeywords.COL_DEPARTURE_TIME);
+		Integer stopSequenceIndex = findColumnIndex(stopTimesHeader, GTFSKeywords.COL_STOP_SEQUENCE);
+
+		if (tripIdIndex == null || stopIdIndex == null || departureTimeIndex == null || stopSequenceIndex == null) {
+			LOGGER.warning("[ERROR] Required columns missing in stop_times.txt!");
+			return;
+		}
+
+		// 4. Remplissage des trips et stops (avec filtrage conditionnel)
+		int totalAdded = 0;
+		int totalSkipped = 0;
+		int totalMissingTrip = 0;
+		int totalFilteredOut = 0; // NOUVEAU compteur
+
+		int processedTrips = 0;
+		int filteredTrips = 0;
+
+		for (String[] fields : stopTimesData) {
+			if (fields == null || fields.length <= Math.max(Math.max(tripIdIndex, stopIdIndex),
+					Math.max(departureTimeIndex, stopSequenceIndex))) {
+				totalSkipped++;
+				continue;
+			}
+
+			try {
+				String tripId = clean(fields[tripIdIndex]);
+
+				// FILTRAGE CONDITIONNEL selon la stratégie
+				if (!useAllTrips && !activeTripIds.contains(tripId)) {
+					totalFilteredOut++;
+					filteredTrips++;
+					continue; // Skip seulement si on filtre par date
+				}
+				processedTrips++;
+				String stopId = clean(fields[stopIdIndex]);
+				String departureTime = fields[departureTimeIndex];
+//                int stopSequence = Integer.parseInt(fields[stopSequenceIndex]);
+
+				TransportTrip trip = tripsMap.get(tripId);
+				if (trip == null) {
+					totalMissingTrip++;
+					continue;
+				}
+
+				trip.addStop(stopId);
+				trip.addStopDetail(stopId, departureTime, 0.0);
+				totalAdded++;
+
+				TransportStop stop = stopsMap.get(stopId);
+				if (stop != null) {
+					int tripRouteType = trip.getRouteType();
+					if (tripRouteType != -1 && stop.getRouteType() == -1) {
+						stop.setRouteType(tripRouteType);
+					}
+					stop.addTripShapePair(tripId, trip.getShapeId()); // maintenant String → OK après 2) et 3)
+				}
+
+			} catch (Exception e) {
+				LOGGER.severe("[ERROR] Échec traitement ligne : " + Arrays.toString(fields) + " → " + e.getMessage());
+			}
+		}
+
+		LOGGER.info("DEBUG stop_times boucle:");
+		LOGGER.info("   → Trips processés: " + processedTrips);
+		LOGGER.info("   → Trips filtrés: " + filteredTrips);
+
+		// 5. Résumé avec nouvelles métriques
+		LOGGER.info("Résumé computeDepartureInfo():");
+		LOGGER.info("   → Stratégie: " + (useAllTrips ? "TOUS LES TRIPS" : "FILTRAGE PAR DATE"));
+		LOGGER.info("   → starting_date défini: " + startingDateDefini);
+		if (!useAllTrips) {
+			LOGGER.info("   → Date de simulation: " + simulationDate);
+			LOGGER.info("   → Trips actifs trouvés: " + activeTripIds.size());
+		}
+		LOGGER.info("   → Stops ajoutés dans trips : " + totalAdded);
+		LOGGER.info("   → Lignes stop_times ignorées (incomplètes) : " + totalSkipped);
+		LOGGER.info("   → tripId non trouvés dans tripsMap : " + totalMissingTrip);
+		LOGGER.info("   → Trips filtrés par date : " + totalFilteredOut);
+
+		// 6. Création des departureTripsInfo (identique)
+		IMap<String, IList<IPair<String, String>>> departureTripsInfo = GamaMapFactory.create(Types.STRING, Types.LIST);
+
+		// IMPORTANT : Utiliser la même logique de filtrage ici
+		Set<String> tripsToProcess = useAllTrips ? tripsMap.keySet() : activeTripIds;
+
+		for (String tripId : tripsToProcess) {
+			TransportTrip trip = tripsMap.get(tripId);
+			if (trip == null)
+				continue;
+
+			IList<String> stopsInOrder = trip.getStopsInOrder();
+			IList<IMap<String, Object>> stopDetails = trip.getStopDetails();
+			IList<IPair<String, String>> stopPairs = GamaListFactory.create(Types.PAIR);
+
+			if (stopsInOrder.isEmpty() || stopDetails.size() != stopsInOrder.size())
+				continue;
+
+			for (int i = 0; i < stopsInOrder.size(); i++) {
+				String stopId = stopsInOrder.get(i);
+				String departureTime = stopDetails.get(i).get(GTFSKeywords.KEY_DEPARTURE_TIME).toString();
+				String departureInSeconds = GtfsCalendarFilter.convertTimeToSeconds(departureTime);
+				stopPairs.add(GamaPairFactory.createWith(stopId, departureInSeconds, Types.STRING, Types.STRING));
+			}
+			departureTripsInfo.put(tripId, stopPairs);
+		}
+
+		// 6. Détermination des stops de départ : prendre le plus petit stop_sequence
+		// par trip
+		Map<String, List<String>> stopToTripIds = new HashMap<>();
+		Set<String> seenTripSignatures = new HashSet<>();
+
+		Map<String, String> tripToFirstStop = new HashMap<>();
+		Map<String, String> tripToFirstStopTime = new HashMap<>();
+		Map<String, Integer> tripToMinSeq = new HashMap<>();
+
+		int tripsFiltresDansStopsDepart = 0;
+		int tripsTraitesDansStopsDepart = 0;
+
+		for (String[] fields : stopTimesData) {
+			if (fields == null || fields.length <= Math.max(Math.max(tripIdIndex, stopIdIndex),
+					Math.max(departureTimeIndex, stopSequenceIndex))) {
+				continue;
+			}
+
+			try {
+				String tripId = clean(fields[tripIdIndex]);
+				if (!useAllTrips && !activeTripIds.contains(tripId)) {
+					tripsFiltresDansStopsDepart++;
+					continue;
+				}
+				if (useAllTrips && !tripsMap.containsKey(tripId)) {
+					tripsFiltresDansStopsDepart++;
+					continue;
+				}
+
+				String stopId = clean(fields[stopIdIndex]);
+				String departureTime = fields[departureTimeIndex];
+				int seq;
+				try {
+					seq = Integer.parseInt(fields[stopSequenceIndex].trim());
+				} catch (Exception ex) {
+					// si stop_sequence manquant ou non numérique, on ignore cette ligne
+					continue;
+				}
+
+				tripsTraitesDansStopsDepart++;
+
+				Integer curMin = tripToMinSeq.get(tripId);
+				if (curMin == null || seq < curMin) {
+					// nouveau minimum
+					tripToMinSeq.put(tripId, seq);
+					tripToFirstStop.put(tripId, stopId);
+					tripToFirstStopTime.put(tripId, GtfsCalendarFilter.convertTimeToSeconds(departureTime));
+				} else if (curMin != null && seq == curMin) {
+					// égalité : garder le départ le plus tôt
+					String curTime = tripToFirstStopTime.get(tripId);
+					String newTime = GtfsCalendarFilter.convertTimeToSeconds(departureTime);
+					if (curTime == null || Integer.parseInt(newTime) < Integer.parseInt(curTime)) {
+						tripToFirstStop.put(tripId, stopId);
+						tripToFirstStopTime.put(tripId, newTime);
+					}
+				}
+
+			} catch (Exception e) {
+				// on ignore les erreurs de parsing ici
+			}
+		}
+
+		LOGGER.info("DEBUG stops de départ:");
+		LOGGER.info("   → Trips traités pour stops départ: " + tripsTraitesDansStopsDepart);
+		LOGGER.info("   → Trips filtrés pour stops départ: " + tripsFiltresDansStopsDepart);
+		LOGGER.info("   → Stops de départ identifiés: " + tripToFirstStop.size());
+
+		// Utiliser les vrais stops de départ pour créer stopToTripIds
+		for (String tripId : departureTripsInfo.keySet()) {
+			IList<IPair<String, String>> stopPairs = departureTripsInfo.get(tripId);
+			if (stopPairs == null || stopPairs.isEmpty())
+				continue;
+
+			// Utiliser le stop avec stop_sequence = 1 si disponible
+			String firstStopId = tripToFirstStop.get(tripId);
+			String departureTime = tripToFirstStopTime.get(tripId);
+
+			// Fallback : si pas de stop_sequence = 1, utiliser le premier dans la liste
+			if (firstStopId == null) {
+				firstStopId = stopPairs.get(0).key();
+				departureTime = stopPairs.get(0).value();
+				LOGGER.info("[WARNING] Trip " + tripId
+						+ " n'a pas de stop_sequence=1, utilise le premier stop rencontré: " + firstStopId);
+			}
+
+			// Créer la signature pour éviter les doublons
+			StringBuilder stopSequence = new StringBuilder();
+			for (IPair<String, String> pair : stopPairs) {
+				stopSequence.append(pair.key()).append(";");
+			}
+			String signature = firstStopId + "_" + departureTime + "_" + stopSequence;
+
+			if (seenTripSignatures.contains(signature))
+				continue;
+			seenTripSignatures.add(signature);
+			stopToTripIds.computeIfAbsent(firstStopId, k -> new ArrayList<>()).add(tripId);
+		}
+
+		// 7. Affectation dans chaque stop + tri + comptage
+		for (Map.Entry<String, List<String>> entry : stopToTripIds.entrySet()) {
+			String stopId = entry.getKey();
+			List<String> tripIds = entry.getValue();
+
+			tripIds.sort((id1, id2) -> {
+				String t1 = tripToFirstStopTime.getOrDefault(id1, departureTripsInfo.get(id1).get(0).value());
+				String t2 = tripToFirstStopTime.getOrDefault(id2, departureTripsInfo.get(id2).get(0).value());
+				return Integer.compare(Integer.parseInt(t1), Integer.parseInt(t2));
+			});
+
+			TransportStop stop = stopsMap.get(stopId);
+			if (stop == null)
+				continue;
+			stop.ensureDepartureTripsInfo();
+			for (String tripId : tripIds) {
+				IList<IPair<String, String>> pairs = departureTripsInfo.get(tripId);
+				stop.addStopPairs(tripId, pairs);
+			}
+			stop.setTripNumber(stop.getDepartureTripsInfo().size());
+		}
+
+		// 8. Résumé final
+		int nbStopsAvecTrips = 0;
+		for (TransportStop stop : stopsMap.values()) {
+			if (stop.getDepartureTripsInfo() != null && !stop.getDepartureTripsInfo().isEmpty()) {
+				nbStopsAvecTrips++;
+			}
+		}
+		LOGGER.info("Nombre de stops avec departureTripsInfo non vide : " + nbStopsAvecTrips);
+		LOGGER.info("Nombre de trips au total dans tripsMap : " + tripsMap.size());
+		LOGGER.info("Nombre de stops de départ identifiés (stop_sequence=1) : " + tripToFirstStop.size());
+		LOGGER.info("computeDepartureInfo completed successfully.");
+	}
+
+	private Set<String> getActiveTripIdsForDate(IScope scope, LocalDate date) {
+		LOGGER.info("\n=== DÉBUT getActiveTripIdsForDate ===");
+		LOGGER.info("Recherche trips actifs pour la date: " + date);
+		LOGGER.info("Jour de la semaine: " + date.getDayOfWeek());
+		LOGGER.info("Format GTFS: "
+				+ date.format(java.time.format.DateTimeFormatter.ofPattern(GTFSKeywords.GTFS_DATE_FORMAT)));
+
+		Set<String> validTripIds = new HashSet<>();
+		Map<String, String> tripIdToServiceId = new HashMap<>();
+
+		// 1. Construction de la map trip -> service_id
+		LOGGER.info("\n--- Phase 1: Lecture trips.txt ---");
+		List<String[]> tripsData = (List<String[]>) gtfsData.get(GTFSKeywords.FILE_TRIPS);
+		IMap<String, Integer> tripsHeader = headerMaps.get(GTFSKeywords.FILE_TRIPS);
+
+		if (tripsData == null || tripsHeader == null) {
+			LOGGER.severe("[ERROR] trips.txt data or headers are missing!");
+			return validTripIds;
+		}
+
+		Integer tripIdIdx = findColumnIndex(tripsHeader, GTFSKeywords.COL_TRIP_ID);
+		Integer serviceIdIdx = findColumnIndex(tripsHeader, GTFSKeywords.COL_SERVICE_ID);
+		if (tripIdIdx == null || serviceIdIdx == null) {
+			LOGGER.severe("[ERROR] trip_id or service_id column missing in trips.txt!");
+			LOGGER.info("   → trip_id index: " + tripIdIdx);
+			LOGGER.info("   → service_id index: " + serviceIdIdx);
+			return validTripIds;
+		}
+
+		int tripsProcessed = 0;
+		int tripsIgnored = 0;
+		for (String[] fields : tripsData) {
+			// Ignore les lignes vides ou mal formées
+			if (fields.length > Math.max(tripIdIdx, serviceIdIdx)) {
+				tripIdToServiceId.put(fields[tripIdIdx].trim().replace("\"", ""),
+						fields[serviceIdIdx].trim().replace("\"", ""));
+				tripsProcessed++;
+			} else {
+				tripsIgnored++;
+			}
+		}
+		LOGGER.info("trips.txt traitement:");
+		LOGGER.info("   → Trips traités: " + tripsProcessed);
+		LOGGER.info("   → Trips ignorés: " + tripsIgnored);
+		LOGGER.info("   → Services uniques: " + tripIdToServiceId.values().stream().distinct().count());
+
+		// 2. Vérification des fichiers calendrier
+		System.out.println("\n--- Phase 2: Vérification fichiers calendrier ---");
+		List<String[]> calendarData = (List<String[]>) gtfsData.get(GTFSKeywords.FILE_CALENDAR);
+		List<String[]> calendarDatesData = (List<String[]>) gtfsData.get(GTFSKeywords.FILE_CALENDAR_DATES);
+		boolean hasCalendar = (calendarData != null && !calendarData.isEmpty());
+		boolean hasCalendarDates = (calendarDatesData != null && !calendarDatesData.isEmpty());
+
+		LOGGER.info("Disponibilité fichiers:");
+		LOGGER.info("   → calendar.txt: " + (hasCalendar ? "(" + calendarData.size() + " lignes)" : "X"));
+		LOGGER.info(
+				"   → calendar_dates.txt: " + (hasCalendarDates ? " (" + calendarDatesData.size() + " lignes)" : "X"));
+
+		Set<String> activeServiceIds = new HashSet<>();
+		java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+				.ofPattern(GTFSKeywords.GTFS_DATE_FORMAT);
+		String dayOfWeek = date.getDayOfWeek().toString().toLowerCase();
+		String dateString = date.format(formatter);
+
+		LOGGER.info("Paramètres recherche:");
+		LOGGER.info("   → Date: " + dateString);
+		LOGGER.info("   → Jour: " + dayOfWeek);
+
+		// 3. Traitement calendar.txt
+		if (hasCalendar) {
+			System.out.println("\n--- Phase 3: Traitement calendar.txt ---");
+			IMap<String, Integer> calendarHeader = headerMaps.get(GTFSKeywords.FILE_CALENDAR);
+			if (calendarHeader == null) {
+				System.err.println("[ERROR] calendar.txt headers missing!");
+			} else {
+				try {
+					Integer serviceIdIdxCal = findColumnIndex(calendarHeader, GTFSKeywords.COL_SERVICE_ID);
+					Integer startIdx = findColumnIndex(calendarHeader, GTFSKeywords.COL_START_DATE);
+					Integer endIdx = findColumnIndex(calendarHeader, GTFSKeywords.COL_END_DATE);
+					Integer dayIdx = findColumnIndex(calendarHeader, dayOfWeek);
+
+					LOGGER.info("Index des colonnes:");
+					LOGGER.info("   → service_id: " + serviceIdIdxCal);
+					LOGGER.info("   → start_date: " + startIdx);
+					LOGGER.info("   → end_date: " + endIdx);
+					LOGGER.info("   → " + dayOfWeek + ": " + dayIdx);
+
+					if (serviceIdIdxCal == null || startIdx == null || endIdx == null || dayIdx == null) {
+						LOGGER.severe("[ERROR] Some required columns are missing in calendar.txt!");
+					} else {
+						int servicesActifs = 0;
+						int servicesInactifs = 0;
+						int servicesHorsPeriode = 0;
+						int servicesJourInactif = 0;
+
+						for (String[] fields : calendarData) {
+							if (fields.length <= Math.max(Math.max(serviceIdIdxCal, startIdx),
+									Math.max(endIdx, dayIdx)))
+								continue;
+
+							try {
+								String serviceId = fields[serviceIdIdxCal].trim().replace("\"", "");
+								LocalDate start = LocalDate.parse(fields[startIdx], formatter);
+								LocalDate end = LocalDate.parse(fields[endIdx], formatter);
+								boolean dayActive = fields[dayIdx].equals("1");
+								boolean inPeriod = !date.isBefore(start) && !date.isAfter(end);
+								boolean runsToday = dayActive && inPeriod;
+
+								if (runsToday) {
+									activeServiceIds.add(serviceId);
+									servicesActifs++;
+								} else {
+									servicesInactifs++;
+									if (!inPeriod)
+										servicesHorsPeriode++;
+									if (!dayActive)
+										servicesJourInactif++;
+								}
+							} catch (Exception e) {
+								System.err.println("Erreur ligne calendar.txt: " + Arrays.toString(fields) + " -> "
+										+ e.getMessage());
+							}
+						}
+
+						LOGGER.info("Résultats calendar.txt pour " + date + ":");
+						LOGGER.info("   → Services actifs: " + servicesActifs);
+						LOGGER.info("   → Services inactifs: " + servicesInactifs);
+						LOGGER.info("     ↳ Hors période: " + servicesHorsPeriode);
+						LOGGER.info("     ↳ Jour inactif: " + servicesJourInactif);
+					}
+				} catch (Exception e) {
+					LOGGER.severe("[ERROR] Processing calendar.txt failed: " + e.getMessage());
+					e.printStackTrace();
+				}
+			}
+		}
+
+		// 4. Traitement calendar_dates.txt
+		if (hasCalendarDates) {
+			LOGGER.info("\n--- Phase 4: Traitement calendar_dates.txt ---");
+			IMap<String, Integer> calDatesHeader = headerMaps.get(GTFSKeywords.FILE_CALENDAR_DATES);
+			if (calDatesHeader == null) {
+				LOGGER.severe("[ERROR] calendar_dates.txt headers missing!");
+			} else {
+				try {
+					Integer serviceIdIdxCal = findColumnIndex(calDatesHeader, GTFSKeywords.COL_SERVICE_ID);
+					Integer dateIdx = findColumnIndex(calDatesHeader, GTFSKeywords.COL_DATE);
+					Integer exceptionTypeIdx = findColumnIndex(calDatesHeader, GTFSKeywords.COL_EXCEPTION_TYPE);
+
+					if (serviceIdIdxCal == null || dateIdx == null || exceptionTypeIdx == null) {
+						LOGGER.severe("[ERROR] Some required columns are missing in calendar_dates.txt!");
+					} else {
+						int ajouts = 0;
+						int suppressions = 0;
+						int datesNonCorrespondantes = 0;
+
+						for (String[] fields : calendarDatesData) {
+							if (fields.length <= Math.max(Math.max(serviceIdIdxCal, dateIdx), exceptionTypeIdx))
+								continue;
+
+							try {
+								String serviceId = fields[serviceIdIdxCal].trim().replace("\"", "");
+								LocalDate exceptionDate = LocalDate.parse(fields[dateIdx], formatter);
+								int exceptionType = Integer.parseInt(fields[exceptionTypeIdx]);
+
+								if (exceptionDate.equals(date)) {
+									if (exceptionType == 1) {
+										activeServiceIds.add(serviceId);
+										ajouts++;
+
+									}
+									if (exceptionType == 2) {
+										boolean wasActive = activeServiceIds.remove(serviceId);
+										suppressions++;
+										LOGGER.info("➖ Service supprimé: " + serviceId
+												+ " (exception_type=2, était actif: " + wasActive + ")");
+									}
+								} else {
+									datesNonCorrespondantes++;
+								}
+							} catch (Exception e) {
+								LOGGER.severe("Erreur ligne calendar_dates.txt: " + Arrays.toString(fields) + " -> "
+										+ e.getMessage());
+							}
+						}
+
+						LOGGER.info("Résultats calendar_dates.txt:");
+						LOGGER.info("   → Services ajoutés (type=1): " + ajouts);
+						LOGGER.info("   → Services supprimés (type=2): " + suppressions);
+						LOGGER.info("   → Dates non correspondantes: " + datesNonCorrespondantes);
+					}
+				} catch (Exception e) {
+					LOGGER.severe("[ERROR] Processing calendar_dates.txt failed: " + e.getMessage());
+					e.printStackTrace();
+				}
+			}
+		}
+
+		// 5. Conversion services -> trips
+		LOGGER.info("\n--- Phase 5: Conversion services -> trips ---");
+		LOGGER.info("Services actifs identifiés: " + activeServiceIds.size());
+		if (activeServiceIds.size() <= 10) {
+			LOGGER.info("Services actifs: " + activeServiceIds);
+		}
+
+		int tripsActifs = 0;
+		for (Map.Entry<String, String> e : tripIdToServiceId.entrySet()) {
+			if (activeServiceIds.contains(e.getValue())) {
+				validTripIds.add(e.getKey());
+				tripsActifs++;
+			}
+		}
+
+		LOGGER.info("Conversion résultat:");
+		LOGGER.info("   → Trips actifs trouvés: " + tripsActifs);
+
+		// 6. FALLBACK SI AUCUN TRIP
+		if (validTripIds.isEmpty()) {
+			LOGGER.severe("\n [WARNING] AUCUN TRIP ACTIF pour la date: " + date);
+			LOGGER.severe("[FALLBACK CAS 2] Recherche d'un jour équivalent dans GTFS...");
+
+			LocalDate altDate = findFirstDateWithSameWeekDay(date);
+			if (altDate != null && !altDate.equals(date)) {
+				LOGGER.info("[FALLBACK CAS 2] Jour équivalent trouvé: " + altDate);
+				Set<String> fallbackTrips = getActiveTripIdsForDate(scope, altDate);
+				LOGGER.info("[FALLBACK CAS 2] Trips récupérés: " + fallbackTrips.size());
+				return fallbackTrips;
+			} else {
+				LOGGER.severe("[FALLBACK CAS 2] No matching weekday found in GTFS.");
+				// NE PAS faire de fallback vers tous les trips ici
+				// Laissez le CAS 3 être géré dans computeDepartureInfo
+			}
+		}
+
+		return validTripIds;
+	}
+
+	private LocalDate findFirstDateWithSameWeekDay(LocalDate wantedDate) {
+		System.out.println("\n findFirstDateWithSameWeekDay appelée...");
+		System.out.println(" Date recherchée: " + wantedDate + " (" + wantedDate.getDayOfWeek() + ")");
+
+		List<LocalDate> allDates = new ArrayList<>();
+		java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+				.ofPattern(GTFSKeywords.GTFS_DATE_FORMAT);
+
+		// calendar.txt
+		LOGGER.info("\n Collecte des dates depuis calendar.txt...");
+		List<String[]> calendarData = (List<String[]>) gtfsData.get(GTFSKeywords.FILE_CALENDAR);
+		if (calendarData != null && !calendarData.isEmpty()) {
+			IMap<String, Integer> header = headerMaps.get(GTFSKeywords.FILE_CALENDAR);
+			if (header != null) {
+				Integer startIdx = findColumnIndex(header, GTFSKeywords.COL_START_DATE);
+				Integer endIdx = findColumnIndex(header, GTFSKeywords.COL_END_DATE);
+				if (startIdx != null && endIdx != null) {
+					int periodesTraitees = 0;
+					int datesAjoutees = 0;
+					for (String[] fields : calendarData) {
+						if (fields.length > endIdx) {
+							try {
+								LocalDate start = LocalDate.parse(fields[startIdx], formatter);
+								LocalDate end = LocalDate.parse(fields[endIdx], formatter);
+
+								LOGGER.info("   Période: " + start + " → " + end);
+
+								for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
+									allDates.add(d);
+									datesAjoutees++;
+								}
+								periodesTraitees++;
+							} catch (Exception e) {
+								LOGGER.severe("Erreur parsing période: " + Arrays.toString(fields));
+							}
+						}
+					}
+					LOGGER.info("calendar.txt:");
+					LOGGER.info("   → Périodes traitées: " + periodesTraitees);
+					LOGGER.info("   → Dates ajoutées: " + datesAjoutees);
+				}
+			}
+		} else {
+			LOGGER.info("calendar.txt non disponible");
+		}
+
+		// calendar_dates.txt
+		LOGGER.info("\n Collecte des dates depuis calendar_dates.txt...");
+		List<String[]> calendarDates = (List<String[]>) gtfsData.get(GTFSKeywords.FILE_CALENDAR_DATES);
+		if (calendarDates != null && !calendarDates.isEmpty()) {
+			IMap<String, Integer> header = headerMaps.get(GTFSKeywords.FILE_CALENDAR_DATES);
+			if (header != null) {
+				Integer dateIdx = findColumnIndex(header, GTFSKeywords.COL_DATE);
+				if (dateIdx != null) {
+					int datesAjoutees = 0;
+					for (String[] fields : calendarDates) {
+						if (fields.length > dateIdx) {
+							try {
+								LocalDate d = LocalDate.parse(fields[dateIdx], formatter);
+								allDates.add(d);
+								datesAjoutees++;
+							} catch (Exception e) {
+								System.err.println("Erreur parsing date: " + Arrays.toString(fields));
+							}
+						}
+					}
+					LOGGER.info("calendar_dates.txt:");
+					LOGGER.info("   → Dates ajoutées: " + datesAjoutees);
+				}
+			}
+		} else {
+			LOGGER.info("calendar_dates.txt non disponible");
+		}
+
+		LOGGER.info("\n Total dates collectées: " + allDates.size());
+
+		// Recherche du premier jour avec le même dayOfWeek
+		LOGGER.info("Recherche du premier " + wantedDate.getDayOfWeek() + " disponible...");
+
+		LocalDate firstMatch = null;
+		int correspondances = 0;
+		LocalDate minDate = null;
+		LocalDate maxDate = null;
+
+		for (LocalDate d : allDates) {
+			// Mise à jour min/max pour debug
+			if (minDate == null || d.isBefore(minDate))
+				minDate = d;
+			if (maxDate == null || d.isAfter(maxDate))
+				maxDate = d;
+
+			if (d.getDayOfWeek().equals(wantedDate.getDayOfWeek())) {
+				correspondances++;
+				if (firstMatch == null || d.isBefore(firstMatch)) {
+					firstMatch = d;
+					System.out.println("      → Nouveau premier match: " + firstMatch);
+				}
+			}
+		}
+
+		LOGGER.info("\nRésultat recherche:");
+		LOGGER.info("   → Période GTFS: " + minDate + " → " + maxDate);
+		LOGGER.info("   → Correspondances " + wantedDate.getDayOfWeek() + ": " + correspondances);
+		LOGGER.info("   → Premier match: " + firstMatch);
+
+		if (firstMatch != null) {
+			LOGGER.info("Date de fallback choisie: " + firstMatch);
+			LOGGER.info("   → Écart avec date demandée: "
+					+ java.time.temporal.ChronoUnit.DAYS.between(wantedDate, firstMatch) + " jours");
+		} else {
+			System.out.println("Aucun jour équivalent trouvé");
+		}
+
+		return firstMatch;
+	}
+
+	public java.time.LocalDate getStartingDate() {
+		java.time.LocalDate minDate = null;
+		java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+				.ofPattern(GTFSKeywords.GTFS_DATE_FORMAT);
+
+		// calendar.txt
+		List<String[]> calendarData = (List<String[]>) gtfsData.get(GTFSKeywords.FILE_CALENDAR);
+		if (calendarData != null && !calendarData.isEmpty()) {
+			IMap<String, Integer> header = headerMaps.get(GTFSKeywords.FILE_CALENDAR);
+			if (header != null) {
+				Integer startIdx = findColumnIndex(header, GTFSKeywords.COL_START_DATE);
+				if (startIdx != null) {
+					for (String[] fields : calendarData) {
+						if (fields.length > startIdx) {
+							java.time.LocalDate d = java.time.LocalDate.parse(fields[startIdx], formatter);
+							if (minDate == null || d.isBefore(minDate))
+								minDate = d;
+						}
+					}
+				}
+			}
+		}
+
+		// calendar_dates.txt
+		List<String[]> calendarDates = (List<String[]>) gtfsData.get(GTFSKeywords.FILE_CALENDAR_DATES);
+		if (calendarDates != null && !calendarDates.isEmpty()) {
+			IMap<String, Integer> header = headerMaps.get(GTFSKeywords.FILE_CALENDAR_DATES);
+			if (header != null) {
+				Integer dateIdx = findColumnIndex(header, GTFSKeywords.COL_DATE);
+				if (dateIdx != null) {
+					for (String[] fields : calendarDates) {
+						if (fields.length > dateIdx) {
+							java.time.LocalDate d = java.time.LocalDate.parse(fields[dateIdx], formatter);
+							if (minDate == null || d.isBefore(minDate))
+								minDate = d;
+						}
+					}
+				}
+			}
+		}
+		return minDate;
+	}
+
+	public java.time.LocalDate getEndingDate() {
+		java.time.LocalDate maxDate = null;
+		java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+				.ofPattern(GTFSKeywords.GTFS_DATE_FORMAT);
+
+		// calendar.txt
+		List<String[]> calendarData = (List<String[]>) gtfsData.get(GTFSKeywords.FILE_CALENDAR);
+		if (calendarData != null && !calendarData.isEmpty()) {
+			IMap<String, Integer> header = headerMaps.get(GTFSKeywords.FILE_CALENDAR);
+			if (header != null) {
+				Integer endIdx = findColumnIndex(header, GTFSKeywords.COL_END_DATE);
+				if (endIdx != null) {
+					for (String[] fields : calendarData) {
+						if (fields.length > endIdx) {
+							java.time.LocalDate d = java.time.LocalDate.parse(fields[endIdx], formatter);
+							if (maxDate == null || d.isAfter(maxDate))
+								maxDate = d;
+						}
+					}
+				}
+			}
+		}
+		// calendar_dates.txt
+		List<String[]> calendarDates = (List<String[]>) gtfsData.get(GTFSKeywords.FILE_CALENDAR_DATES);
+		if (calendarDates != null && !calendarDates.isEmpty()) {
+			IMap<String, Integer> header = headerMaps.get(GTFSKeywords.FILE_CALENDAR_DATES);
+			if (header != null) {
+				Integer dateIdx = findColumnIndex(header, GTFSKeywords.COL_DATE);
+				if (dateIdx != null) {
+					for (String[] fields : calendarDates) {
+						if (fields.length > dateIdx) {
+							java.time.LocalDate d = java.time.LocalDate.parse(fields[dateIdx], formatter);
+							if (maxDate == null || d.isAfter(maxDate))
+								maxDate = d;
+						}
+					}
+				}
+			}
+		}
+		return maxDate;
+	}
+
+	public static String clean(String s) {
+		return s == null ? "" : s.trim().replace("\"", "").replace("'", "");
+	}
+
+}

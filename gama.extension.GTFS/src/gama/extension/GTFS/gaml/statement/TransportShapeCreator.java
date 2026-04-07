@@ -1,4 +1,4 @@
-package gama.extension.GTFS.gaml;
+package gama.extension.GTFS.gaml.statement;
 
 import gama.annotations.constants.IKeyword;
 import gama.api.gaml.statements.IStatement;
@@ -8,7 +8,7 @@ import gama.api.kernel.agent.IPopulation;
 import gama.api.runtime.scope.IScope;
 import gama.api.types.geometry.IShape;
 import gama.api.types.list.IList;
-import gama.extension.GTFS.TransportShape;
+import gama.extension.GTFS.gaml.file.object.TransportShape;
 
 import java.util.ArrayList;
 import java.util.List;

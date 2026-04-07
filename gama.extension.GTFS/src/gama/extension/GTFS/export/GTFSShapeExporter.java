@@ -1,8 +1,8 @@
 package gama.extension.GTFS.export;
 
 import gama.api.runtime.scope.IScope;
-import gama.extension.GTFS.GamaGTFSFile;
-import gama.extension.GTFS.TransportStop;
+import gama.extension.GTFS.gaml.file.GamaGTFSFile;
+import gama.extension.GTFS.gaml.file.object.TransportStop;
 
 import org.geotools.api.data.SimpleFeatureStore;
 import org.geotools.api.feature.simple.SimpleFeatureType;

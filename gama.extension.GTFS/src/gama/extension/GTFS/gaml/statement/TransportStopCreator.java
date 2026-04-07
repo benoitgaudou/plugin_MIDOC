@@ -1,4 +1,4 @@
-package gama.extension.GTFS.gaml;
+package gama.extension.GTFS.gaml.statement;
 
 import gama.api.gaml.statements.IStatement;
 import gama.api.gaml.statements.IStatement.Create;
@@ -12,7 +12,7 @@ import gama.api.types.map.GamaMapFactory;
 import gama.api.types.map.IMap;
 import gama.api.types.pair.GamaPairFactory;
 import gama.api.types.pair.IPair;
-import gama.extension.GTFS.TransportStop;
+import gama.extension.GTFS.gaml.file.object.TransportStop;
 
 import java.util.HashMap;
 import java.util.List;

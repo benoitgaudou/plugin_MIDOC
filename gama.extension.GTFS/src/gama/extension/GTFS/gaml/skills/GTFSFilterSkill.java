@@ -1,12 +1,13 @@
 
-package gama.extension.GTFS.skills;
+package gama.extension.GTFS.gaml.skills;
 
 import gama.annotations.action;
 import gama.annotations.skill;
 import gama.annotations.doc;
 import gama.api.kernel.skill.Skill;
 import gama.api.runtime.scope.IScope;
-import gama.extension.GTFSfilter.GTFSFilter;
+import gama.extension.GTFS.GTFSfilter.GTFSFilter;
+
 import java.io.File;
 
 @skill(name = "gtfs_filter")

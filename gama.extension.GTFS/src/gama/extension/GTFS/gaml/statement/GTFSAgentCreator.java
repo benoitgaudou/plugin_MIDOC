@@ -1,4 +1,4 @@
-package gama.extension.GTFS.gaml;
+package gama.extension.GTFS.gaml.statement;
 
 import gama.api.gaml.statements.IStatement;
 import gama.api.gaml.statements.IStatement.Create;

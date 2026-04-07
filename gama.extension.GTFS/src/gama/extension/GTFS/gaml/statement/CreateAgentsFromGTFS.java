@@ -1,4 +1,4 @@
-package gama.extension.GTFS.gaml;
+package gama.extension.GTFS.gaml.statement;
 
 import gama.api.additions.delegates.ICreateDelegate;
 import gama.api.gaml.expressions.IExpression;
@@ -13,7 +13,7 @@ import gama.api.kernel.species.ISpecies;
 import gama.api.runtime.scope.IScope;
 import gama.api.types.list.GamaListFactory;
 import gama.api.types.list.IList;
-import gama.extension.GTFS.GamaGTFSFile;
+import gama.extension.GTFS.gaml.file.GamaGTFSFile;
 
 import java.util.List;
 import java.util.Map;

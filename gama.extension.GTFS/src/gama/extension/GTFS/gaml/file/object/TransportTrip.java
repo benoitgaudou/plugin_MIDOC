@@ -1,4 +1,4 @@
-package gama.extension.GTFS;
+package gama.extension.GTFS.gaml.file.object;
 
 import java.util.Map;
 

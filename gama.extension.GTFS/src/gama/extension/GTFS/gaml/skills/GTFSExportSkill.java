@@ -1,13 +1,12 @@
-package gama.extension.GTFS.skills;
+package gama.extension.GTFS.gaml.skills;
 
 import gama.annotations.action;
 import gama.annotations.skill;
 import gama.api.kernel.skill.Skill;
 import gama.api.runtime.scope.IScope;
 import gama.annotations.doc;
-
-import gama.extension.GTFS.GamaGTFSFile;
 import gama.extension.GTFS.export.GTFSShapeExporter;
+import gama.extension.GTFS.gaml.file.GamaGTFSFile;
 
 /**
  * Skill pour exporter les shapes ou stops GTFS en shapefile via une action GAMA.

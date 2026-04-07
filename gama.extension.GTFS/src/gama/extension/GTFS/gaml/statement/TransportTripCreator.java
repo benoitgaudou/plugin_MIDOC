@@ -1,4 +1,4 @@
-package gama.extension.GTFS.gaml;
+package gama.extension.GTFS.gaml.statement;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,7 +11,7 @@ import gama.api.kernel.agent.IAgent;
 import gama.api.kernel.agent.IPopulation;
 import gama.api.runtime.scope.IScope;
 import gama.api.types.list.IList;
-import gama.extension.GTFS.TransportTrip;
+import gama.extension.GTFS.gaml.file.object.TransportTrip;
 
 public class TransportTripCreator implements GTFSAgentCreator {
 	

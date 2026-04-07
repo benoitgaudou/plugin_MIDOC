@@ -1,4 +1,4 @@
-package gama.extension.GTFS.skills;
+package gama.extension.GTFS.gaml.skills;
 
 import gama.annotations.skill;
 import gama.annotations.variable;

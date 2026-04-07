@@ -1,4 +1,4 @@
-package gama.extension.GTFS.Operators;
+package gama.extension.GTFS.gaml.operators;
 
 import gama.annotations.operator;
 import gama.annotations.support.IOperatorCategory;
@@ -6,7 +6,7 @@ import gama.api.gaml.types.IType;
 import gama.api.runtime.scope.IScope;
 import gama.api.types.date.GamaDateFactory;
 import gama.api.types.date.IDate;
-import gama.extension.GTFS.GamaGTFSFile;
+import gama.extension.GTFS.gaml.file.GamaGTFSFile;
 
 
 public class GTFSOperators {

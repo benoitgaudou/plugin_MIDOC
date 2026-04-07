@@ -1,6 +1,5 @@
-package gama.extension.GTFSfilter;
+package gama.extension.GTFS.GTFSfilter;
 
-import GamaGTFSUtils.OSMUtils;
 import org.locationtech.jts.geom.Envelope;
 import org.onebusaway.gtfs.impl.GtfsRelationalDaoImpl;
 import org.onebusaway.gtfs.serialization.GtfsReader;
@@ -10,6 +9,8 @@ import com.opencsv.CSVReader;
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvValidationException;
+
+import gama.extension.GTFS.GamaGTFSUtils.OSMUtils;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;

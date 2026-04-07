@@ -13,7 +13,7 @@
    <extension
          point="gama.create">
       <implementation
-            class="gama.extension.GTFS.gaml.CreateAgentsFromGTFS"
+            class="gama.extension.GTFS.gaml.statement.CreateAgentsFromGTFS"
             description="Create agents from GTFS files">
       </implementation>
    </extension>

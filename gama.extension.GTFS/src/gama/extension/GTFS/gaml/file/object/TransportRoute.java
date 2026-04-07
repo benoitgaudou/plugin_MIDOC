@@ -1,4 +1,4 @@
-package gama.extension.GTFS;
+package gama.extension.GTFS.gaml.file.object;
 
 public class TransportRoute {
 

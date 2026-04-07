@@ -1,4 +1,4 @@
-package GamaGTFSUtils; 
+package gama.extension.GTFS.GamaGTFSUtils; 
 
 import java.io.File;
 import java.io.FileNotFoundException;
