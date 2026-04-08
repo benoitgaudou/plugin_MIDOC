@@ -57,7 +57,7 @@ global {
     }
     
     // === ÉTAPE 1 : EXTRAIRE LES SHAPES DEPUIS LE GTFS ===
-    action extract_shapes_from_gtfs {
+    action extract_shapes_from_gtfs() {
         write "\n=== ÉTAPE 1 : EXTRACTION SHAPES GTFS ===";
         
         try {
@@ -100,7 +100,7 @@ global {
     }
     
     // === ÉTAPE 2 : CALCULER LA POSITION PROJETÉE POUR CHAQUE SHAPE ===
-    action project_gtfs_coordinates {
+    action project_gtfs_coordinates() {
         write "\n=== ÉTAPE 2 : PROJECTION COORDONNÉES GTFS ===";
         
         loop shape_id over: map_gtfs.keys {
@@ -124,7 +124,7 @@ global {
     }
     
     // === ÉTAPE 3 : RÉCUPÉRER LES AGENTS CRÉÉS DANS GAMA ===
-    action create_and_collect_gama_agents {
+    action create_and_collect_gama_agents() {
         write "\n=== ÉTAPE 3 : CRÉATION ET COLLECTE AGENTS GAMA ===";
         
         // Créer les vrais agents GAMA
@@ -155,7 +155,7 @@ global {
     }
     
     // === ÉTAPE 4 : COMPARER LES DEUX MAPS ===
-    action compare_gtfs_vs_gama {
+    action compare_gtfs_vs_gama() {
         write "\n=== ÉTAPE 4 : COMPARAISON GTFS vs GAMA ===";
         
         // Trouver les shapes communs
@@ -204,7 +204,7 @@ global {
     }
     
     // === ÉTAPE 5 : TESTS COMPLÉMENTAIRES ===
-    action run_additional_tests {
+    action run_additional_tests() {
         write "\n=== ÉTAPE 5 : TESTS COMPLÉMENTAIRES ===";
         
         // Test 1: Cohérence de projection
@@ -217,7 +217,7 @@ global {
     }
     
     // Test de cohérence de projection
-    action test_projection_consistency {
+    action test_projection_consistency() {
         write "\n--- TEST COHÉRENCE PROJECTION ---";
         
         // Tester la projection avec des points de référence connus
@@ -237,7 +237,7 @@ global {
     }
     
     // Test cohérence nombre de points
-    action test_point_count_consistency {
+    action test_point_count_consistency() {
         write "\n--- TEST COHÉRENCE NOMBRE DE POINTS ---";
         
         int consistent_counts <- 0;
@@ -266,7 +266,7 @@ global {
     }
     
     // === ÉTAPE 6 : GÉNÉRER RAPPORT FINAL ===
-    action generate_final_report {
+    action generate_final_report() {
         write "\n=== ÉTAPE 6 : RAPPORT FINAL ===";
         
         // Calculer statistiques
@@ -336,11 +336,11 @@ global {
         write "   - Couverture : " + string(total_shapes_tested) + " shapes testés";
         
         // Mise à jour des couleurs des agents selon les résultats
-        do update_agent_colors;
+        do update_agent_colors();
     }
     
     // Action pour mettre à jour les couleurs des agents selon les résultats
-    action update_agent_colors {
+    action update_agent_colors() {
         ask transport_shape {
             string shape_key <- string(self.shapeId);
             bool is_valid <- not (error_shapes contains shape_key);
@@ -349,7 +349,7 @@ global {
     }
     
     // Action pour diagnostic détaillé
-    action show_detailed_comparison {
+    action show_detailed_comparison() {
     write "\n=== COMPARAISON DÉTAILLÉE ===";
     
     loop shape_id over: map_gtfs_projected.keys {

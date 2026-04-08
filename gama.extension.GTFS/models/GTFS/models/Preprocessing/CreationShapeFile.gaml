@@ -1,7 +1,7 @@
 model GTFSreader
 
 global skills: [gtfs_export] {
-    gtfs_file gtfs_f <- gtfs_file("../../includes/ToulouseFilter_gtfs_cleaned");
+    gtfs_file gtfs_f <- gtfs_file("../../includes/ToulouseFilter_gtfs");
     //shape_file boundary_shp <- shape_file("../../includes/routes.shp");
 
     //geometry shape <- envelope(boundary_shp);
@@ -10,7 +10,7 @@ global skills: [gtfs_export] {
         write "Loading GTFS contents from: " + gtfs_f;
         
         // *** Export du shapefile directement ***
-        do export_shapes_to_shapefile;
+        do export_shapes_to_shapefile();
 
         // Si tu veux ensuite créer les agents pour affichage, tu peux :
         //create transport_shape from: gtfs_f { }
