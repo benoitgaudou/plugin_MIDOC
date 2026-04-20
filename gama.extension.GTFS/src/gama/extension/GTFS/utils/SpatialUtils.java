@@ -1,4 +1,4 @@
-package gama.extension.GTFS.GamaGTFSUtils;
+package gama.extension.GTFS.utils;
 
 import gama.api.runtime.scope.IScope;
 import gama.api.types.geometry.GamaPoint;

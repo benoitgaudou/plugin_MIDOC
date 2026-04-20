@@ -1,4 +1,4 @@
-package gama.extension.GTFS.GTFSfilter;
+package gama.extension.GTFS.utils.GTFSfilter;
 
 import org.locationtech.jts.geom.Envelope;
 import org.onebusaway.gtfs.impl.GtfsRelationalDaoImpl;
@@ -10,7 +10,7 @@ import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvValidationException;
 
-import gama.extension.GTFS.GamaGTFSUtils.OSMUtils;
+import gama.extension.GTFS.utils.OSMUtils;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -38,10 +38,10 @@ public class GTFSFilter {
     );
 
     public static void filter(String gtfsDirPath, String osmFilePath, String outputDirPath) throws Exception {
-        System.out.println("🔄 Début du filtrage GTFS...");
+        System.out.println(" Début du filtrage GTFS...");
 
         Envelope env = OSMUtils.extractEnvelope(osmFilePath);
-        System.out.println("✅ Enveloppe OSM extraite: " + env.toString());
+        System.out.println(" Enveloppe OSM extraite: " + env.toString());
 
         File gtfsDir = new File(gtfsDirPath);
         if (!gtfsDir.isDirectory()) {
@@ -88,20 +88,20 @@ public class GTFSFilter {
                     return true;
                 }
             } catch (Exception e) {
-                System.err.println("⚠️ Erreur parsing coordonnées pour stop: " + Arrays.toString(row));
+                System.err.println("️ Erreur parsing coordonnées pour stop: " + Arrays.toString(row));
             }
             return false;
         });
-        System.out.println("✅ " + keptStopIds.size() + " arrêts conservés");
+        System.out.println(" " + keptStopIds.size() + " arrêts conservés");
 
      // --- stop_times.txt (TRI + RÉINDEX PAR TRIP) ---
-        System.out.println("🔄 Filtrage/tri/réindex des horaires (stop_times.txt)...");
+        System.out.println(" Filtrage/tri/réindex des horaires (stop_times.txt)...");
         StopTimesResult stRes = filterSortRenumberStopTimes(gtfsDir, outDir, keptStopIds);
         Set<String> keptTripIds = stRes.tripIds;                    // trips encore valides (>= 2 stops)
         Set<String> usedStopsAfter = stRes.stopIds;                 // stops réellement utilisés après réindex
-        System.out.println("✅ stop_times.txt écrit. Trips gardés: " + keptTripIds.size());
+        System.out.println(" stop_times.txt écrit. Trips gardés: " + keptTripIds.size());
         
-     // ✅ Overwrite stops.txt to keep only stops that are still referenced after reindex
+     //  Overwrite stops.txt to keep only stops that are still referenced after reindex
         filterAndWriteFile("stops.txt", gtfsDir, outDir, (header, row) -> {
             int idxStop = header.getOrDefault("stop_id", -1);
             if (idxStop < 0 || row.length <= idxStop) return false;
@@ -113,7 +113,7 @@ public class GTFSFilter {
         // --- trips.txt ---
         Set<String> routesToKeep = new HashSet<>();
         Set<String> shapesToKeep = new HashSet<>();
-        System.out.println("🔄 Filtrage des voyages (trips.txt)...");
+        System.out.println(" Filtrage des voyages (trips.txt)...");
         filterAndWriteFile("trips.txt", gtfsDir, outDir, (header, row) -> {
             int idxTripId = header.getOrDefault("trip_id", -1);
             int idxRouteId = header.getOrDefault("route_id", -1);
@@ -129,10 +129,10 @@ public class GTFSFilter {
             }
             return false;
         });
-        System.out.println("✅ " + routesToKeep.size() + " routes conservées");
+        System.out.println(" " + routesToKeep.size() + " routes conservées");
 
         // --- routes.txt ---
-        System.out.println("🔄 Filtrage des routes (routes.txt)...");
+        System.out.println(" Filtrage des routes (routes.txt)...");
         filterAndWriteFile("routes.txt", gtfsDir, outDir, (header, row) -> {
             int idxRouteId = header.getOrDefault("route_id", -1);
             if (row.length <= idxRouteId || idxRouteId < 0) return false;
@@ -205,10 +205,10 @@ public class GTFSFilter {
                 }
             }
             // trier par stop_sequence (déjà réindexé, mais au cas où)
-            for (List<StopRef> L : byTrip.values()) {
-                // rien à faire ici car on n'a pas stocké stop_sequence; stop_times.txt filtré l'a déjà remis en ordre
-                // si besoin: relire stop_sequence et trier; ici on suppose outFile déjà trié
-            }
+ //           for (List<StopRef> L : byTrip.values()) {
+ //               // rien à faire ici car on n'a pas stocké stop_sequence; stop_times.txt filtré l'a déjà remis en ordre
+ //               // si besoin: relire stop_sequence et trier; ici on suppose outFile déjà trié
+ //           }
         }
 
         // 0.3 tripToShapeId (depuis trips.txt filtré)
@@ -399,7 +399,7 @@ public class GTFSFilter {
                 }
             }
 
-            System.out.println("✅ shapes.txt écrit (tous tronçons intra-bbox) : " + written + " lignes, shapes=" + (nextNewShapeId-1));
+            System.out.println(" shapes.txt écrit (tous tronçons intra-bbox) : " + written + " lignes, shapes=" + (nextNewShapeId-1));
 
             // -- 1h) Remapper trips.txt -> nouveau shape_id
             remapTripsShapeIdsPerTrip(new File(outDir, "trips.txt"), tripToNewShape);
@@ -408,7 +408,7 @@ public class GTFSFilter {
         
 
         // --- fichiers optionnels ---
-        System.out.println("🔄 Copie des fichiers optionnels...");
+        System.out.println(" Copie des fichiers optionnels...");
         int optionalFilesCopied = 0;
         for (String filename : OPTIONAL_FILES) {
             File src = new File(gtfsDir, filename);
@@ -416,16 +416,16 @@ public class GTFSFilter {
                 Files.copy(src.toPath(), new File(outDir, filename).toPath(),
                           java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                 optionalFilesCopied++;
-                System.out.println("✅ " + filename + " copié");
+                System.out.println("- " + filename + " copié");
             }
         }
-        System.out.println("✅ " + optionalFilesCopied + " fichiers optionnels copiés");
+        System.out.println(" " + optionalFilesCopied + " fichiers optionnels copiés");
 
         // --- Suppression fichiers non listés ---
         cleanupUnwantedFiles(outDir);
 
         // Nettoyage et validation
-        System.out.println("🔄 Nettoyage des données...");
+        System.out.println(" Nettoyage des données...");
         pruneAllFiles(outDir);
 
         // -----------------------
@@ -440,33 +440,33 @@ public class GTFSFilter {
         // Renommer le dossier nettoyé comme dossier final
         boolean ok = new File(cleanedDir).renameTo(new File(outputDirPath));
         if (!ok) {
-            System.err.println("⚠️ Erreur lors du renommage du dossier nettoyé !");
+            System.err.println("️ Erreur lors du renommage du dossier nettoyé !");
         }
         
         try {
             postSortShapes(new File(outputDirPath));
         } catch (Exception e) {
-            System.err.println("⚠️ postSortShapes a échoué: " + e.getMessage());
+            System.err.println("️ postSortShapes a échoué: " + e.getMessage());
         }
 
         // Validation sur le dossier FINAL
-        System.out.println("🔄 Validation avec GTFS-Validator...");
+        System.out.println(" Validation avec GTFS-Validator...");
         ValidationResult result = validateWithGtfsValidator(outputDirPath);
 
         if (result.hasErrors()) {
-            System.err.println("⚠️ GTFS-Validator a détecté " + result.getErrorCount() + " erreur(s)");
-            System.err.println("📁 Voir détails dans: " + result.getValidationPath());
+            System.err.println("️ GTFS-Validator a détecté " + result.getErrorCount() + " erreur(s)");
+            System.err.println(" Voir détails dans: " + result.getValidationPath());
             if (result.hasCriticalErrors()) {
-                System.err.println("❌ Erreurs critiques détectées - les données peuvent être inutilisables");
+                System.err.println(" Erreurs critiques détectées - les données peuvent être inutilisables");
             } else {
-                System.out.println("💡 Erreurs mineures seulement - les données restent utilisables");
+                System.out.println(" Erreurs mineures seulement - les données restent utilisables");
             }
         } else {
-            System.out.println("✅ Validation GTFS réussie - aucune erreur détectée");
+            System.out.println(" Validation GTFS réussie - aucune erreur détectée");
         }
 
-        System.out.println("✅ Filtrage GTFS terminé avec succès!");
-        System.out.println("📁 Résultats dans: " + outputDirPath);
+        System.out.println(" Filtrage GTFS terminé avec succès!");
+        System.out.println(" Résultats dans: " + outputDirPath);
     }
     
  // Helpers simples
@@ -489,7 +489,7 @@ public class GTFSFilter {
         return g.intersection(bbox);
     }
 
-    private static LineString longestLine(Geometry geom, GeometryFactory gf) {
+/*    private static LineString longestLine(Geometry geom, GeometryFactory gf) {
         if (geom == null || geom.isEmpty()) return null;
         if (geom instanceof LineString) return (LineString) geom;
         double best = -1; LineString pick = null;
@@ -502,7 +502,7 @@ public class GTFSFilter {
         }
         return pick;
     }
-
+*/
     
     private static void postSortShapes(File outDir) throws IOException, CsvValidationException {
         File shapes = new File(outDir, "shapes.txt");
@@ -583,11 +583,11 @@ public class GTFSFilter {
             }
         }
         Files.move(tmp.toPath(), tripsFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-        System.out.println("✅ trips.txt remappé avec shape_id par trip");
+        System.out.println(" trips.txt remappé avec shape_id par trip");
     }
 
 
-    
+/*    
     private static void remapShapeIdsInTrips(File tripsOutFile, Map<String,String> shapeIdRemap) throws IOException, CsvValidationException {
         if (!tripsOutFile.exists()) return;
         char sep = detectSeparator(tripsOutFile);
@@ -618,9 +618,9 @@ public class GTFSFilter {
             }
         }
         Files.move(tmp.toPath(), tripsOutFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-        System.out.println("✅ trips.txt remappé avec shape_id numériques");
+        System.out.println(" trips.txt remappé avec shape_id numériques");
     }
-
+*/
 
     private static void handleAgencyFile(File gtfsDir, File outDir, String osmFilePath) throws IOException {
         File agencySrc = new File(gtfsDir, "agency.txt");
@@ -669,7 +669,7 @@ public class GTFSFilter {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(agencyDest))) {
             writer.write("agency_id,agency_name,agency_url,agency_timezone\n");
             writer.write(String.format("1,%s,%s,%s\n", agencyName, agencyUrl, agencyTimezone));
-            System.out.println("✅ Fichier agency.txt adaptatif généré pour: " + cityName);
+            System.out.println(" Fichier agency.txt adaptatif généré pour: " + cityName);
         }
     }
 
@@ -688,7 +688,7 @@ public class GTFSFilter {
             }
         }
         if (removedFiles > 0) {
-            System.out.println("✅ " + removedFiles + " fichier(s) non standard(s) supprimé(s)");
+            System.out.println(" " + removedFiles + " fichier(s) non standard(s) supprimé(s)");
         }
     }
 
@@ -715,12 +715,12 @@ public class GTFSFilter {
             writer.run(dao);
             writer.close();
 
-            System.out.println("✅ OneBusAway : GTFS nettoyé -> " + outputDir);
+            System.out.println(" OneBusAway : GTFS nettoyé -> " + outputDir);
 
             verifyCleanedOutput(outputDirFile);
 
         } catch (Exception e) {
-            System.err.println("❌ Erreur OneBusAway: " + e.getMessage());
+            System.err.println(" Erreur OneBusAway: " + e.getMessage());
             e.printStackTrace();
             throw new Exception("Échec du nettoyage OneBusAway: " + e.getMessage(), e);
         }
@@ -1084,7 +1084,7 @@ public class GTFSFilter {
         if (reportFiles != null) {
             for (File reportFile : reportFiles) {
                 result.addReportFile(reportFile.getAbsolutePath());
-                System.out.println("📋 Rapport trouvé: " + reportFile.getName());
+                System.out.println(" Rapport trouvé: " + reportFile.getName());
             }
         }
 

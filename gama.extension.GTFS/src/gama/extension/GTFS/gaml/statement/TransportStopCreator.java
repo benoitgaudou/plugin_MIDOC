@@ -6,12 +6,10 @@ import gama.api.gaml.types.Types;
 import gama.api.kernel.agent.IAgent;
 import gama.api.kernel.agent.IPopulation;
 import gama.api.runtime.scope.IScope;
-import gama.api.types.list.GamaListFactory;
+import gama.api.types.date.IDate;
 import gama.api.types.list.IList;
 import gama.api.types.map.GamaMapFactory;
 import gama.api.types.map.IMap;
-import gama.api.types.pair.GamaPairFactory;
-import gama.api.types.pair.IPair;
 import gama.extension.GTFS.gaml.file.object.TransportStop;
 
 import java.util.HashMap;
@@ -59,21 +57,23 @@ public class TransportStopCreator implements GTFSAgentCreator {
         }
 
         for (IAgent agent : createdAgents) {
-            IMap<String, IList<IPair<String, String>>> departureTripsInfo =
-                    (IMap<String, IList<IPair<String, String>>>) agent.getAttribute("departureTripsInfo");
+            IMap<String, IMap<String, IDate>> departureTripsInfo =
+                    (IMap<String, IMap<String, IDate>>) agent.getAttribute("departureTripsInfo");
 
             if (departureTripsInfo == null || departureTripsInfo.isEmpty()) {
                 continue;
             }
 
-            IMap<String, IList<IPair<IAgent, String>>> departureStopsInfo = GamaMapFactory.create(Types.STRING, Types.LIST);
+            IMap<String, IMap<IAgent, IDate>> departureStopsInfo = GamaMapFactory.create(Types.STRING, Types.LIST);
 
-            for (Map.Entry<String, IList<IPair<String, String>>> entry : departureTripsInfo.entrySet()) {
-                IList<IPair<IAgent, String>> convertedStops = GamaListFactory.create(Types.PAIR);
-                for (IPair<String, String> pair : entry.getValue()) {
-                    IAgent stopAgent = stopIdToAgentMap.get(pair.key());
+            for (Map.Entry<String, IMap<String, IDate>> entry : departureTripsInfo.entrySet()) {
+                IMap<IAgent, IDate> convertedStops = GamaMapFactory.create(Types.STRING, Types.DATE);
+                for (String keyOfMapPairs : entry.getValue().getKeys()) {
+                    IAgent stopAgent = stopIdToAgentMap.get(keyOfMapPairs);
                     if (stopAgent != null) {
-                        convertedStops.add(GamaPairFactory.createWith(stopAgent, pair.value(), Types.AGENT, Types.STRING));
+             //           convertedStops.add(GamaPairFactory.createWith(stopAgent, pair.value(), Types.AGENT, Types.STRING));
+                    	convertedStops.put(stopAgent, entry.getValue().get(keyOfMapPairs));
+
                     }
                 }
                 departureStopsInfo.put(entry.getKey(), convertedStops);

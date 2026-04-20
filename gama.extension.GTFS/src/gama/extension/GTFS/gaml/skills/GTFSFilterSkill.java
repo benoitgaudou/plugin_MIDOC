@@ -6,11 +6,14 @@ import gama.annotations.skill;
 import gama.annotations.doc;
 import gama.api.kernel.skill.Skill;
 import gama.api.runtime.scope.IScope;
-import gama.extension.GTFS.GTFSfilter.GTFSFilter;
+import gama.extension.GTFS.utils.GTFSfilter.GTFSFilter;
 
 import java.io.File;
 
 @skill(name = "gtfs_filter")
+@doc("Skill for filtering GTFS files based on OSM bounding box and validating the results. "
+		+ "The filter_gtfs_with_osm action processes GTFS files according to the OSM bounding box, "
+		+ "producing a clean and coherent output in the specified output path. Global variables gtfs_path, osm_path, and output_path must be defined.")
 public class GTFSFilterSkill extends Skill {
 
     @action(
@@ -40,7 +43,7 @@ public class GTFSFilterSkill extends Skill {
             // Affiche un message de succès dans la console GAMA
             if (scope.getGui() != null) {
                 scope.getGui().getConsole().informConsole(
-                    "✅ GTFS filtré, nettoyé et validé : " + outputAbsPath.getAbsolutePath(),
+                    "GTFS filtré, nettoyé et validé : " + outputAbsPath.getAbsolutePath(),
                     scope.getSimulation()
                 );
                 scope.getGui().getConsole().informConsole(
@@ -51,7 +54,7 @@ public class GTFSFilterSkill extends Skill {
         } catch (Exception e) {
             if (scope.getGui() != null) {
                 scope.getGui().getConsole().informConsole(
-                    "❌ Error while filtering/validating GTFS: " + e.getMessage(),
+                    "Error while filtering/validating GTFS: " + e.getMessage(),
                     scope.getSimulation()
                 );
             }

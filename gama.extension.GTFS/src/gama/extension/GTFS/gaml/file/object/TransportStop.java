@@ -6,14 +6,14 @@ import java.util.logging.Logger;
 
 import gama.api.gaml.types.Types;
 import gama.api.runtime.scope.IScope;
+import gama.api.types.date.IDate;
 import gama.api.types.geometry.IPoint;
 import gama.api.types.list.IList;
 import gama.api.types.map.GamaMapFactory;
 import gama.api.types.map.IMap;
-import gama.api.types.pair.IPair;
-import gama.extension.GTFS.GamaGTFSUtils.SpatialUtils;
-import gama.extension.GTFS.gaml.file.GTFSKeywords;
 import gama.extension.GTFS.gaml.file.GamaGTFSFile;
+import gama.extension.GTFS.utils.SpatialUtils;
+import gama.extension.GTFS.utils.file.GTFSKeywords;
 
 public class TransportStop {
 
@@ -21,12 +21,12 @@ public class TransportStop {
 
     private String stopId;
     private String stopName;
-    private double stopLat;   // Latitude originale du GTFS
-    private double stopLon;   // Longitude originale du GTFS
+//    private double stopLat;   // Latitude originale du GTFS
+//    private double stopLon;   // Longitude originale du GTFS
     private IPoint location;
     private int routeType = -1;
     private int tripNumber = 0; 
-    private IMap<String, IList<IPair<String, String>>> departureTripsInfo;
+    private IMap<String, IMap<String, IDate>> departureTripsInfo;
     private IMap<String, String> tripShapeMap;
     private IMap<String, IList<Double>> departureShapeDistances;
 
@@ -34,8 +34,8 @@ public class TransportStop {
     public TransportStop(String stopId, String stopName, double stopLat, double stopLon, IScope scope) {
         this.stopId = stopId;
         this.stopName = stopName;
-        this.stopLat = stopLat;
-        this.stopLon = stopLon;
+//        this.stopLat = stopLat;
+//        this.stopLon = stopLon;
         
         // Conversion pour la simulation GAMA (en CRS interne)
         this.location = SpatialUtils.toGamaCRS(scope, stopLat, stopLon);
@@ -50,9 +50,9 @@ public class TransportStop {
     public IPoint getLocation() { return location; }
     public int getRouteType() { return routeType; }
     public IPoint getGeometry() { return location; } 
-    public double getStopLat() { return stopLat; }
-    public double getStopLon() { return stopLon; }
-    public IMap<String, IList<IPair<String, String>>> getDepartureTripsInfo() { return departureTripsInfo; }
+//    public double getStopLat() { return stopLat; }
+//    public double getStopLon() { return stopLon; }
+    public IMap<String, IMap<String, IDate>> getDepartureTripsInfo() { return departureTripsInfo; }
     public IMap<String, String> getTripShapeMap() { return tripShapeMap; }
     public int getTripNumber() { return tripNumber; }
     public IMap<String, IList<Double>> getDepartureShapeDistances() { return departureShapeDistances; }
@@ -62,11 +62,11 @@ public class TransportStop {
 
     
     // 
-    public void addStopPairs(String tripId, IList<IPair<String, String>> stopPairs) {
+    public void addStopPairs(String tripId, IMap<String, IDate> stopPairs) {
         departureTripsInfo.put(tripId, stopPairs);
     }
 
-    public void setDepartureTripsInfo(IMap<String, IList<IPair<String, String>>> departureTripsInfo) {
+    public void setDepartureTripsInfo(IMap<String, IMap<String, IDate>> departureTripsInfo) {
         this.departureTripsInfo = departureTripsInfo;
     }
 
@@ -126,4 +126,5 @@ public class TransportStop {
     
         return stopsMap;
     }
+    
 }

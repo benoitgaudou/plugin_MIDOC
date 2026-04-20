@@ -9,7 +9,8 @@ Import-Package: org.osgi.framework;version="1.10.0"
 Require-Bundle: gama.core,
  gama.dependencies,
  gaml.compiler;bundle-version="0.0.0",
- gama.api;bundle-version="[0.0.0,1.0.0)"
+ gama.api;bundle-version="[0.0.0,1.0.0)",
+ gama.annotations;bundle-version="[0.0.0,1.0.0)"
 Automatic-Module-Name: gama.extension.GTFS
 Bundle-ClassPath: .,
  lib/jts-core-1.20.0.jar,

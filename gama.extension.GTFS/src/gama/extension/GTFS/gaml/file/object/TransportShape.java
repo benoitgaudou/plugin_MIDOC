@@ -6,7 +6,7 @@ import gama.api.types.geometry.IPoint;
 import gama.api.types.geometry.IShape;
 import gama.api.types.list.GamaListFactory;
 import gama.api.types.list.IList;
-import gama.extension.GTFS.GamaGTFSUtils.SpatialUtils;
+import gama.extension.GTFS.utils.SpatialUtils;
 
 
 public class TransportShape {
@@ -19,7 +19,13 @@ public class TransportShape {
     public TransportShape(String shapeId, String routeId) {
         this.shapeId = shapeId;
         this.routeId = routeId;
-        this.points = GamaListFactory.create();
+        this.points = GamaListFactory.create();        
+    }
+    
+    public TransportShape(String shapeId, String routeId, IList<IPoint> pts) {
+        this.shapeId = shapeId;
+        this.routeId = routeId;
+        this.points = pts;        
     }
 
     public void addPoint(double lat, double lon, IScope scope) {

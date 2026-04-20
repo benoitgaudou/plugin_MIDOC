@@ -17,10 +17,12 @@ global {
         // Create bus_stop agents from the GTFS data
        create bus_stop from: gtfs_f ;  
        create transport_shape from: gtfs_f ;  
+       write "Creation of stops and shape agents";
 
        //
        save bus_stop to: output_folder+"/bus_stop.shp" format: "shp" attributes: ["name","stopName","stopId","routeType","tripNumber"];              
        save transport_shape to: output_folder+"/transport_shape.shp" format: "shp" attributes: ["name","routeId","routeType","shapeId","tripId"];       
+		write "Save stops and shape agents in Shapegiles";
     }
 }
 
@@ -41,26 +43,24 @@ species transport_shape skills: [TransportShapeSkill] {
 experiment GTFSExperiment type: gui virtual: true {
     
     output {
-        // Display the bus stops on the map
-        display "Bus Stops And Envelope" {  
-            // Display the bus_stop agents on the map
+        display "Bus Stops And Envelope" type: 3d{  
             species bus_stop aspect: base;
             species transport_shape aspect: base; 
         }
     }
 }
 
-experiment TestImportationControledesDonneesToulouse type: gui parent: GTFSExperiment {
+experiment "Export Toulouse" type: gui parent: GTFSExperiment {
 	parameter "GTFS file path" var: gtfs_f_path <- "../../includes/tisseo_gtfs_v2";	
 	parameter "Boundary shapefile" var: boundary_shp_path <- "../../includes/shapeFileToulouse.shp";
 }
 
-experiment TestImportationControledesDonneesNantes type: gui parent: GTFSExperiment {
+experiment "Export Nantes" type: gui parent: GTFSExperiment {
 	parameter "GTFS file path" var: gtfs_f_path <- "../../includes/nantes_gtfs";	
 	parameter "Boundary shapefile" var: boundary_shp_path <- "../../includes/shapeFileNantes.shp";
 }
 
-experiment TestImportationControledesDonneesHanoi type: gui parent: GTFSExperiment {
+experiment "Export Hanoi" type: gui parent: GTFSExperiment {
 	parameter "GTFS file path" var: gtfs_f_path <- "../../includes/hanoi_gtfs_pm";	
 	parameter "Boundary shapefile" var: boundary_shp_path <- "../../includes/shapeFileHanoishp.shp";
 }

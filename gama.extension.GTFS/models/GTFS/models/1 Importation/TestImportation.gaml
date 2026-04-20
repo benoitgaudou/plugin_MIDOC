@@ -32,8 +32,9 @@ species bus_stop skills: [TransportStopSkill] {
 }
 
 species transport_shape skills: [TransportShapeSkill] {
+	rgb color <- #black;
      aspect base { 	
-		draw shape color:#darkgrey;	
+		draw shape color:color;	
      }
 
 
@@ -51,17 +52,25 @@ experiment GTFSExperiment type: gui virtual: true {
     }
 }
 
-experiment TestImportationControledesDonneesToulouse type: gui parent: GTFSExperiment {
+experiment Toulouse type: gui parent: GTFSExperiment {
 	parameter "GTFS file path" var: gtfs_f_path <- "../../includes/tisseo_gtfs_v2";	
 	parameter "Boundary shapefile" var: boundary_shp_path <- "../../includes/shapeFileToulouse.shp";
 }
 
-experiment TestImportationControledesDonneesNantes type: gui parent: GTFSExperiment {
+experiment Nantes type: gui parent: GTFSExperiment {
 	parameter "GTFS file path" var: gtfs_f_path <- "../../includes/nantes_gtfs";	
 	parameter "Boundary shapefile" var: boundary_shp_path <- "../../includes/shapeFileNantes.shp";
 }
 
-experiment TestImportationControledesDonneesHanoi type: gui parent: GTFSExperiment {
+experiment Hanoi type: gui parent: GTFSExperiment {
 	parameter "GTFS file path" var: gtfs_f_path <- "../../includes/hanoi_gtfs_pm";	
 	parameter "Boundary shapefile" var: boundary_shp_path <- "../../includes/shapeFileHanoishp.shp";
+}
+
+experiment "3 villes" type: gui parent: GTFSExperiment {
+	action _init_() {
+		create simulation(gtfs_f_path: "../../includes/tisseo_gtfs_v2", boundary_shp_path: "../../includes/shapeFileToulouse.shp");
+		create simulation(gtfs_f_path: "../../includes/nantes_gtfs", boundary_shp_path: "../../includes/shapeFileNantes.shp");
+		create simulation(gtfs_f_path: "../../includes/hanoi_gtfs_pm", boundary_shp_path: "../../includes/shapeFileHanoishp.shp");
+	}
 }

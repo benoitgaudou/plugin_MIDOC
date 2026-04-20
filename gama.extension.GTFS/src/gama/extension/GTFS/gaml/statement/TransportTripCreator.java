@@ -29,7 +29,7 @@ public class TransportTripCreator implements GTFSAgentCreator {
 
 	    for (int i = 0; i < limit; i++) {
 	        TransportTrip trip = trips.get(i);
-	        System.out.println("[DEBUG] Creating agent for tripId=" + trip.getTripId() + " with shapeId=" + trip.getShapeId());
+//	        System.out.println("[DEBUG] Creating agent for tripId=" + trip.getTripId() + " with shapeId=" + trip.getShapeId());
 	        Map<String, Object> tripInit = new HashMap<>();
 	        tripInit.put("tripId", trip.getTripId());
 	        tripInit.put("routeId", trip.getRouteId());

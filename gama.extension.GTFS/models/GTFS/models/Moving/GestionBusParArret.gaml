@@ -11,9 +11,9 @@ model GestionBusParArret
 
 global {
 	gtfs_file gtfs_f <- gtfs_file("../../includes/tisseo_gtfs_v2");
-	shape_file boundary_shp <- shape_file("../../includes/boundaryTLSE-WGS84PM.shp");
+//	shape_file boundary_shp <- shape_file("../../includes/boundaryTLSE-WGS84PM.shp");
 	shape_file cleaned_road_shp <- shape_file("../../includes/cleaned_network.shp");
-	geometry shape <- envelope(boundary_shp);
+	geometry shape <- envelope(cleaned_road_shp);
 	graph road_network;
 	bus_stop starts_stop;
 	string formatted_time;
@@ -63,14 +63,14 @@ species bus_stop skills: [TransportStopSkill] {
         if (formatted_time >= list_times[0] and not operation_done) {
             write "Création d'un bus au départ de " + stopName;
 
-            create bus with: [
+            create bus (
                 departureStopsInfo::departureStopsInfo_trip,
                 list_bus_stops::list_bus_stops,
                 list_times::list_times,
                 current_stop_index::0,
                 location::list_bus_stops[0].location,
                 target_location::(length(list_bus_stops) > 1 ? list_bus_stops[1].location : nil)
-            ];
+            );
 
             // Une fois le bus créé, on désactive le réflexe pour éviter une création multiple
             operation_done <- true;
@@ -111,7 +111,7 @@ species bus skills: [moving] {
      // Déplacement du bus vers le prochain arrêt
      // Reflexe pour déplacer le bus vers target_location
     reflex move when: self.location != target_location and current_stop_index < length(list_bus_stops) and not is_waiting {
-        do goto target: target_location on: road_network speed: speed;
+        do goto(target: target_location, on: road_network, speed: speed);
     }
     
    // Reflexe pour vérifier l'arrivée et mettre à jour le prochain arrêt

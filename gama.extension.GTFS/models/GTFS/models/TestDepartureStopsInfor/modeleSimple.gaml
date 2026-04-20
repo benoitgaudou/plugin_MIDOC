@@ -140,25 +140,25 @@ species bus skills: [moving] {
         time_at_stop <- time_at_stop + 1;
         
         if (time_at_stop >= waiting_time) {
-            do arrive_at_stop;
+            do arrive_at_stop();
             waiting_at_stop <- false;
         }
     }
     
     // Arriver à un arrêt
-    action arrive_at_stop {
+    action arrive_at_stop() {
         if (current_index >= 0 and current_index < length(my_stops)) {
             bus_stop current_stop <- my_stops[current_index];
-            write "🚌 Arrêt " + string(current_index + 1) + "/" + string(length(my_stops)) + ": " + current_stop.name;
+            write "Arrêt " + string(current_index + 1) + "/" + string(length(my_stops)) + ": " + current_stop.name;
             
             current_index <- current_index + 1;
             
             if (current_index < length(my_stops)) {
                 next_target <- my_stops[current_index].location;
-                write "➡️ Prochain: " + my_stops[current_index].name;
+                write "➡Prochain: " + my_stops[current_index].name;
             } else {
-                write "🏁 TERMINUS!";
-                write "📏 Distance: " + string(round(total_distance_traveled)) + "m";
+                write "TERMINUS!";
+                write "Distance: " + string(round(total_distance_traveled)) + "m";
                 at_terminus <- true;
             }
         } else {

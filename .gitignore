@@ -44,3 +44,10 @@ gama.extension.GTFS/models/GTFS/results1/bus_routes_part3.shp
 gama.extension.GTFS/models/GTFS/results1/main_roads_part0.shp
 gama.extension.GTFS/models/GTFS/results1/main_roads_part0.shx
 gama.extension.GTFS/models/GTFS/results1/bus_routes_part0.dbf
+gama.extension.GTFS/models/GTFS/includes/gtfs_hanoi_vin/agency.txt
+gama.extension.GTFS/models/GTFS/includes/gtfs_hanoi_vin/calendar.txt
+gama.extension.GTFS/models/GTFS/includes/gtfs_hanoi_vin/routes.txt
+gama.extension.GTFS/models/GTFS/includes/gtfs_hanoi_vin/shapes.txt
+gama.extension.GTFS/models/GTFS/includes/gtfs_hanoi_vin/stop_times.txt
+gama.extension.GTFS/models/GTFS/includes/gtfs_hanoi_vin/stops.txt
+gama.extension.GTFS/models/GTFS/includes/gtfs_hanoi_vin/trips.txt

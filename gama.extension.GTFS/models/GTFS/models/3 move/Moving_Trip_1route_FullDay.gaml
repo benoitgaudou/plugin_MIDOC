@@ -17,8 +17,11 @@ global {
 
 	 bus_stop starts_stop;	 
 	 transport_shape my_shape ;
+	 transport_trip my_trip;
 	 
-	 init{              
+	 init{
+	 	write "Loading GTFS contents from: " + gtfs_f;
+              
         create bus_stop from: gtfs_f ;
         create transport_trip from: gtfs_f ;
         create transport_shape from: gtfs_f ;
@@ -32,6 +35,7 @@ global {
         string sId <- starts_stop.tripShapeMap.values()[0];
         
         my_shape <- transport_shape first_with(each.shapeId = sId);
+        my_trip <- transport_trip first_with(each.tripId = tId);
         
      	shape_network <- as_edge_graph(my_shape);
    
@@ -40,12 +44,13 @@ global {
         }
 
         create bus {
-        	write "Trip Id : " + tId;
-			departureStopsInfo <- starts_stop.departureStopsInfo[tId];
-			stops <- departureStopsInfo.keys;
+			list<pair<bus_stop,string>> departureStopsInfo <- starts_stop.departureStopsInfo[string(my_trip.tripId)];
+			stops <- departureStopsInfo collect (each.key);
 			current_stop_index <- 0;
 			location <- stops[0].location;
-			target_location <- stops[1].location;	  		 
+			target_location <- stops[1].location;	
+			
+			write departureStopsInfo;  		 
 		}
 		
 	 }
@@ -53,6 +58,15 @@ global {
 
 species bus_stop skills: [TransportStopSkill] {
     rgb color <- rgb(0,0,255); 
+    
+    init {
+  //  	write self.departureStopsInfo;
+    }
+    
+    reflex act {
+    	write self.departureStopsInfo;
+
+    }
 	
     aspect base {
       draw circle(20) color: color;
@@ -75,7 +89,6 @@ species bus skills: [moving] {
 
 	int current_stop_index <- 0;
 	point target_location;
-	map<bus_stop,date> departureStopsInfo;
 	list<bus_stop> stops;
 	
 	init {

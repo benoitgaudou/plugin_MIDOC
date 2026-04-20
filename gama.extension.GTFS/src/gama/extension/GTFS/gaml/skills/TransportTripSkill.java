@@ -17,32 +17,32 @@ import gama.api.kernel.skill.Skill;
  */
 @skill(name = "TransportTripSkill", doc = @doc("Skill for agents that represent individual transport trips with attributes like tripId, routeId, stopsInOrder, destination, and stopDetails."))
 @vars({
-    @variable(name = "tripId", type = IType.INT, doc = @doc("The unique identifier of the transport trip.")),
+    @variable(name = "tripId", type = IType.STRING, doc = @doc("The unique identifier of the transport trip.")),
     @variable(name = "routeId", type = IType.STRING, doc = @doc("The unique identifier of the route associated with the trip.")),
     @variable(name = "routeType", type = IType.INT, doc = @doc("The type of transport associated with this trip (bus, tram, metro, etc.).")),
-    @variable(name = "shapeId", type = IType.INT, doc = @doc("The unique indentifier of shape"))
+    @variable(name = "shapeId", type = IType.STRING, doc = @doc("The unique indentifier of shape"))
 })
 public class TransportTripSkill extends Skill {
 
     // Getter and setter for tripId
     @getter("tripId")
-    public int getTripId(final IAgent agent) {
-        return (Integer) agent.getAttribute("tripId");
+    public String getTripId(final IAgent agent) {
+        return (String) agent.getAttribute("tripId");
     }
 
     @setter("tripId")
-    public void setTripId(final IAgent agent, final int tripId) {
+    public void setTripId(final IAgent agent, final String tripId) {
         agent.setAttribute("tripId", tripId);
     }
 
     // Getter and setter for shapeId
     @getter("shapeId")
-    public int getShapeId(final IAgent agent) {
-        return (int) agent.getAttribute("shapeId");
+    public String getShapeId(final IAgent agent) {
+        return (String) agent.getAttribute("shapeId");
     }
     
     @setter("shapeId")
-    public void setShapeId(final IAgent agent, final int shapeId) {
+    public void setShapeId(final IAgent agent, final String shapeId) {
         agent.setAttribute("shapeId", shapeId);
     }
     

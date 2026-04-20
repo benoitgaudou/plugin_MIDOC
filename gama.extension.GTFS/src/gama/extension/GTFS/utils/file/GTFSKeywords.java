@@ -1,4 +1,4 @@
-package gama.extension.GTFS.gaml.file;
+package gama.extension.GTFS.utils.file;
 
 public interface GTFSKeywords {
 	// Constants for GTFS file names
