@@ -186,7 +186,7 @@ species bus skills: [moving] {
     }
     
     // === ACTION: Calcul de vitesse pour le segment actuel AVEC COMPENSATION STEP ===
-    action calculate_segment_speed {
+    action calculate_segment_speed() {
         if (current_stop_index >= length(departureStopsInfo) - 1) {
             return;
         }
@@ -311,7 +311,7 @@ species bus skills: [moving] {
     }
     
     // === ACTION: Arrivée à un arrêt ===
-    action arrive_at_stop {
+    action arrive_at_stop() {
         // Calcul écart temps
         int expected_arrival_time <- departureStopsInfo[current_stop_index + 1].value as int;
         int actual_time <- current_local_time;

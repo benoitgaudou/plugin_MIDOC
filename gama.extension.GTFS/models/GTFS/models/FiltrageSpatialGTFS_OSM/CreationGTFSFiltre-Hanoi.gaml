@@ -6,7 +6,7 @@ global skills: [gtfs_filter] {
     string output_path <- "../../includes/HanoiFilter_gtfs";
 
     init {
-        do filter_gtfs_with_osm;
+        do filter_gtfs_with_osm();
     }
 }
 
