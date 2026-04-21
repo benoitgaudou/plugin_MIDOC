@@ -67,14 +67,14 @@ public class GTFSFilter {
         if (!missingFiles.isEmpty()) {
             throw new IllegalArgumentException("Fichiers GTFS manquants: " + String.join(", ", missingFiles));
         }
-        System.out.println("✅ Fichiers GTFS requis vérifiés");
+        System.out.println(" Fichiers GTFS requis vérifiés");
 
         // --- agency.txt ---
         handleAgencyFile(gtfsDir, outDir, osmFilePath);
 
         // --- stops.txt ---
         Set<String> keptStopIds = new HashSet<>();
-        System.out.println("🔄 Filtrage des arrêts (stops.txt)...");
+        System.out.println(" Filtrage des arrêts (stops.txt)...");
         filterAndWriteFile("stops.txt", gtfsDir, outDir, (header, row) -> {
             int idxLat = header.getOrDefault("stop_lat", -1);
             int idxLon = header.getOrDefault("stop_lon", -1);
