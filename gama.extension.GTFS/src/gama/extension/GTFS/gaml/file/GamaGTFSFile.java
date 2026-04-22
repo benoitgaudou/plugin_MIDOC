@@ -200,7 +200,6 @@ public class GamaGTFSFile extends GamaFile<IList<String>, String> {
 		for (TransportTrip trip : tripsMap.values()) {
 			if (routesMap.containsKey(trip.getRouteId())) {
 				trip.setRouteType(routesMap.get(trip.getRouteId()).getType());	
-				System.out.println(trip.getShapeId());
 				shapesMap.get(trip.getShapeId()).setRouteType(routesMap.get(trip.getRouteId()).getType());
 			}
 		}

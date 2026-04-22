@@ -13,17 +13,24 @@ global {
 	
 	geometry shape <- envelope(boundary_shp);
 	
+	//tolerance for reconnecting nodes
+	float tolerance <- 3.0;	
+	//if true, split the lines at their intersection
+	bool split_lines <- true;
+	//if true, keep only the main connected components of the network
+	bool reduce_to_main_connected_components <- true;
+	
+	
     init {   
         // Create bus_stop agents from the GTFS data
-       create bus_stop from: gtfs_f ;  
-       create transport_shape from: gtfs_f ;  
-       write "Creation of stops and shape agents";
+       	create bus_stop from: gtfs_f ;  
+       	create transport_shape from: gtfs_f ;  
+       	write "Creation of stops and shape agents";
 
-       //
-       save bus_stop to: output_folder+"/bus_stop.shp" format: "shp" attributes: ["name","stopName","stopId","tripNumber"];              
-       save transport_shape to: output_folder+"/transport_shape.shp" format: "shp" attributes: ["name","routeId","routeType","shapeId","tripId"];       
-		write "Save stops and shape agents in Shapegiles";
-    }
+       	//
+       	save bus_stop to: output_folder+"/bus_stop.shp" format: "shp" attributes: ["name","stopName","stopId","tripNumber"];              
+       	save transport_shape to: output_folder+"/transport_shape.shp" format: "shp" attributes: ["name","routeId","routeType","shapeId","tripId"];
+	}
 }
 
 // Species representing each transport stop

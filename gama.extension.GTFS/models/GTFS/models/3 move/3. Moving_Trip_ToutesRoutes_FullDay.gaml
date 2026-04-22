@@ -19,6 +19,9 @@ global {
 	 
 	float step <- 10#s;
 	 
+	// To optimize: compute 1 graph per shapeId
+	map<string,graph> mapGraphs <- map([]);	
+	 
 	init{
 		create bus_stop from: gtfs_f ;
         create transport_shape from: gtfs_f ;
@@ -45,12 +48,10 @@ species bus_stop skills: [TransportStopSkill] schedules:bus_stop where (each.is_
 		next_trip_index <- (next_trip_index + 1) mod length(departureStopsInfo) ;    	
 		next_trip_id <- departureStopsInfo.keys()[next_trip_index];
 		next_departure <- map<string,date>(departureStopsInfo[next_trip_id]).values()[0];	
-		        
-//        write sample(next_trip_id) + sample(next_departure) + sample(next_trip_index);
-//        write sample(world.current_date);
     }
     
     reflex create_bus {
+    	write sample(""+cycle + " bus_stop " + int(self));
 		loop while: (world.current_date > next_departure) {
 			create bus {
 				departureStopsInfo <- myself.departureStopsInfo[myself.next_trip_id];
@@ -59,13 +60,18 @@ species bus_stop skills: [TransportStopSkill] schedules:bus_stop where (each.is_
 				location <- stops[0].location;
 				target_location <- stops[1].location;
 				
-				transport_shape my_shape <- transport_shape first_with (each.shapeId = myself.tripShapeMap[myself.next_trip_id]);
-          
-		        ask my_shape {
-					self.to_display <- true;
+				if(mapGraphs.keys contains myself.tripShapeMap[myself.next_trip_id]) {
+					shape_network <- mapGraphs[string(myself.tripShapeMap[myself.next_trip_id])];
+				} else {
+					transport_shape my_shape <- transport_shape first_with (each.shapeId = myself.tripShapeMap[myself.next_trip_id]);
+	          
+			        ask my_shape {
+						self.to_display <- true;
+					}
+					
+					shape_network <- as_edge_graph(my_shape);
+					add shape_network at: string(myself.tripShapeMap[myself.next_trip_id]) to: mapGraphs ;
 				}
-				
-				shape_network <- as_edge_graph(my_shape);
 			}
 			
 			do update_next_trip();
