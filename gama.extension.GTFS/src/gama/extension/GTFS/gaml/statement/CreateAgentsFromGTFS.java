@@ -54,7 +54,7 @@ public class CreateAgentsFromGTFS implements ICreateDelegate {
         }
 
         // Select the appropriate class to handle the creation of agents
-        agentCreator = getAgentCreator(scope, targetSpecies, gtfsReader);
+        agentCreator = getAgentCreator(targetSpecies, gtfsReader);
         if (agentCreator == null) {
             scope.getGui().getConsole().informConsole("Unrecognized skill", scope.getSimulation());
             return false;
@@ -105,11 +105,11 @@ public class CreateAgentsFromGTFS implements ICreateDelegate {
     /**
      * Selects the appropriate agent creation handler based on the species type.
      */
-    private GTFSAgentCreator getAgentCreator(IScope scope, ISpecies species, GamaGTFSFile gtfsReader) {
+    private GTFSAgentCreator getAgentCreator(ISpecies species, GamaGTFSFile gtfsReader) {
         if (species.implementsSkill("TransportStopSkill")) {
             return new TransportStopCreator(gtfsReader != null ? gtfsReader.getStops() : null);
         } else if (species.implementsSkill("TransportShapeSkill")) {
-            return new TransportShapeCreator(gtfsReader != null ? gtfsReader.getShapes(scope) : null);
+            return new TransportShapeCreator(gtfsReader != null ? gtfsReader.getShapes() : null);
         } else if (species.implementsSkill("TransportTripSkill")) {
             return new TransportTripCreator(gtfsReader != null ? gtfsReader.getTrips() : null);
         }

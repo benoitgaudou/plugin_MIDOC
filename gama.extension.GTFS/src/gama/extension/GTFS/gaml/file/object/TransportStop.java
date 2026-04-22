@@ -24,7 +24,7 @@ public class TransportStop {
 //    private double stopLat;   // Latitude originale du GTFS
 //    private double stopLon;   // Longitude originale du GTFS
     private IPoint location;
-    private int routeType = -1;
+//    private int routeType = -1;
     private int tripNumber = 0; 
     private IMap<String, IMap<String, IDate>> departureTripsInfo;
     private IMap<String, String> tripShapeMap;
@@ -48,7 +48,7 @@ public class TransportStop {
     public String getStopId() { return stopId; }
     public String getStopName() { return stopName; }
     public IPoint getLocation() { return location; }
-    public int getRouteType() { return routeType; }
+//    public int getRouteType() { return routeType; }
     public IPoint getGeometry() { return location; } 
 //    public double getStopLat() { return stopLat; }
 //    public double getStopLon() { return stopLon; }
@@ -58,7 +58,7 @@ public class TransportStop {
     public IMap<String, IList<Double>> getDepartureShapeDistances() { return departureShapeDistances; }
     
     public void setTripNumber(int tripNumber) { this.tripNumber = tripNumber;} 
-    public void setRouteType(int routeType) { this.routeType = routeType; }
+//    public void setRouteType(int routeType) { this.routeType = routeType; }
 
     
     // 
@@ -90,7 +90,7 @@ public class TransportStop {
                 : "null";
         return "TransportStop{id='" + stopId + "', name='" + stopName
                 + "', location={" + locationStr + "}, "
-                + "routeType=" + routeType + ", "
+//                + "routeType=" + routeType + ", "
                 + "tripShapeMap=" + tripShapeMap + "}";
     }
     

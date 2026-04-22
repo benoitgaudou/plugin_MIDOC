@@ -32,6 +32,7 @@ public interface GTFSKeywords {
 	// Column names — shapes.txt
 	public static final String COL_SHAPE_PT_LAT    = "shape_pt_lat";
 	public static final String COL_SHAPE_PT_LON    = "shape_pt_lon";
+	public static final String FAKE_SHAPE = "fake_";
 
 	// Column names — calendar.txt / calendar_dates.txt
 	public static final String COL_START_DATE      = "start_date";

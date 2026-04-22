@@ -118,10 +118,10 @@ public class DepartureInfos {
 
 				TransportStop stop = stopsMap.get(stopId);
 				if (stop != null) {
-					int tripRouteType = trip.getRouteType();
-					if (tripRouteType != -1 && stop.getRouteType() == -1) {
-						stop.setRouteType(tripRouteType);
-					}
+			//		int tripRouteType = trip.getRouteType();
+			//		if (tripRouteType != -1 && stop.getRouteType() == -1) {
+			//			stop.setRouteType(tripRouteType);
+			//		}
 					stop.addTripShapePair(tripId, trip.getShapeId()); // maintenant String → OK après 2) et 3)
 				}
 

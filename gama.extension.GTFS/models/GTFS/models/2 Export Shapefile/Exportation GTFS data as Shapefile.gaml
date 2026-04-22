@@ -20,7 +20,7 @@ global {
        write "Creation of stops and shape agents";
 
        //
-       save bus_stop to: output_folder+"/bus_stop.shp" format: "shp" attributes: ["name","stopName","stopId","routeType","tripNumber"];              
+       save bus_stop to: output_folder+"/bus_stop.shp" format: "shp" attributes: ["name","stopName","stopId","tripNumber"];              
        save transport_shape to: output_folder+"/transport_shape.shp" format: "shp" attributes: ["name","routeId","routeType","shapeId","tripId"];       
 		write "Save stops and shape agents in Shapegiles";
     }

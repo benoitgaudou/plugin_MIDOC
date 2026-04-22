@@ -109,7 +109,7 @@ species bus skills: [moving] {
 
 experiment GTFSExperiment type: gui {
 	output {
-		display "Bus Simulation" {
+		display "Bus Simulation" type: 3d{
             species bus_stop aspect: base refresh: true;
             species bus aspect: base;
             species transport_shape aspect:default;

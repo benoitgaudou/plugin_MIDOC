@@ -1,11 +1,17 @@
 package gama.extension.GTFS.gaml.file.object;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import gama.api.gaml.types.Types;
+import gama.api.runtime.scope.IScope;
 import gama.api.types.list.GamaListFactory;
 import gama.api.types.list.IList;
 import gama.api.types.map.GamaMapFactory;
 import gama.api.types.map.IMap;
+import gama.extension.GTFS.gaml.file.GamaGTFSFile;
+import gama.extension.GTFS.utils.file.GTFSKeywords;
 
 public class TransportTrip {
 
@@ -120,6 +126,40 @@ public class TransportTrip {
         return stops;
     }
 
+    @SuppressWarnings("unchecked")
+	public static IMap<String, TransportTrip> createTransportTripsFromGtfs(
+    		IScope scope, List<String[]> tripsData, IMap<String, Integer> headerIMap,
+    		IMap<String, TransportRoute> routesMap) {
+
+    	IMap<String, TransportTrip> tripsMap = GamaMapFactory.create(Types.STRING, Types.get(TransportTrip.class));
+
+        if (tripsData != null && headerIMap != null) {
+    		Integer routeIdIndex = GamaGTFSFile.findColumnIndex(headerIMap, GTFSKeywords.COL_ROUTE_ID);
+    		Integer tripIdIndex = GamaGTFSFile.findColumnIndex(headerIMap, GTFSKeywords.COL_TRIP_ID);
+    		Integer shapeIdIdx = GamaGTFSFile.findColumnIndex(headerIMap, GTFSKeywords.COL_SHAPE_ID);
+
+    		for (String[] fields : tripsData) {
+				String routeId = GamaGTFSFile.clean(fields[routeIdIndex]);
+				String tripId = GamaGTFSFile.clean(fields[tripIdIndex]);
+				String shapeId = GamaGTFSFile.clean(fields[shapeIdIdx]);
+				
+				if (shapeId.isEmpty()) {
+					shapeId = GTFSKeywords.FAKE_SHAPE + tripId;
+				}
+    		
+				TransportTrip trip = tripsMap.get(tripId);
+				if (trip == null) {
+					trip = new TransportTrip(routeId, "", tripId, 0, shapeId);
+					trip.setRouteType(routesMap.get(routeId) != null ? routesMap.get(routeId).getType() : -1); // Set route type if route exists					
+					tripsMap.put(tripId, trip);
+				}
+    		}
+        }
+    
+        return tripsMap;
+    }
+    
+    
     // Display trip information
     @Override
     public String toString() {

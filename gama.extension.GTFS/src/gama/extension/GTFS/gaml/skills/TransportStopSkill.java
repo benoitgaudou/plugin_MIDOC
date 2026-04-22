@@ -24,7 +24,7 @@ import gama.api.types.pair.IPair;
 @vars({
     @variable(name = "stopId", type = IType.STRING, doc = @doc("The unique ID of the transport stop.")),
     @variable(name = "stopName", type = IType.STRING, doc = @doc("The name of the transport stop.")),
-    @variable(name = "routeType", type = IType.INT, doc = @doc("The type of transport route associated with the stop.")),
+//    @variable(name = "routeType", type = IType.INT, doc = @doc("The type of transport route associated with the stop.")),
     @variable(name = "departureStopsInfo", type = IType.MAP, doc = @doc("Map where keys are trip IDs and values are lists of GamaPair<IAgent, String> (stop agent and departure time).")),
     @variable(name = "tripShapeMap", type = IType.MAP, doc = @doc("Map where keys are trip IDs and values are shape IDs.")),
     @variable(name = "tripNumber", type = IType.INT, doc = @doc("Number of trips starting from this stop."))
@@ -44,10 +44,10 @@ public class TransportStopSkill extends Skill {
     }
 
     // Getter for routeType
-    @getter("routeType")
-    public int getRouteType(final IAgent agent) {
-        return (int) agent.getAttribute("routeType");
-    }
+//    @getter("routeType")
+//    public int getRouteType(final IAgent agent) {
+//        return (int) agent.getAttribute("routeType");
+//    }
 
     // Getter for departureStopsInfo
     @SuppressWarnings("unchecked")
